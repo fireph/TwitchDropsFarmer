@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  twitchdropsfarmer:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - ENVIRONMENT=production
+      - DATA_DIR=/data
+      # Use the same client ID as TwitchDropsMiner for compatibility
+      - TWITCH_CLIENT_ID=kimne78kx3ncx6brgo4mv6wki5h1ko
+      # You can set a client secret if you have one, but it's not required for the SmartTV flow
+      # - TWITCH_CLIENT_SECRET=your_secret_here
+    volumes:
+      - twitchdropsfarmer_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.twitchdropsfarmer.rule=Host(`drops.yourdomain.com`)"
+      - "traefik.http.routers.twitchdropsfarmer.entrypoints=websecure"
+      - "traefik.http.routers.twitchdropsfarmer.tls.certresolver=letsencrypt"
+      - "traefik.http.services.twitchdropsfarmer.loadbalancer.server.port=8080"
+
+volumes:
+  twitchdropsfarmer_data:
+    driver: local
+
+networks:
+  default:
+    name: twitchdropsfarmer_network
