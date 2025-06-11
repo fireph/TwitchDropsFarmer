@@ -108,9 +108,17 @@ type TokenResponse struct {
 	TokenType    string   `json:"token_type"`
 }
 
-// Exact GQL Operations from TwitchDropsMiner constants.py
-var GQLOperations = map[string]GQLOperation{
-	"GetStreamInfo": {
+// GQLOperationBuilder creates new GQLOperation instances with specified variables
+type GQLOperationBuilder struct{}
+
+// NewGQLOperationBuilder creates a new GQLOperationBuilder
+func NewGQLOperationBuilder() *GQLOperationBuilder {
+	return &GQLOperationBuilder{}
+}
+
+// GetStreamInfo creates a GetStreamInfo operation
+func (b *GQLOperationBuilder) GetStreamInfo(channelLogin string) GQLOperation {
+	return GQLOperation{
 		OperationName: "VideoPlayerStreamInfoOverlayChannel",
 		Extensions: &GQLExtensions{
 			PersistedQuery: &PersistedQuery{
@@ -119,10 +127,14 @@ var GQLOperations = map[string]GQLOperation{
 			},
 		},
 		Variables: map[string]interface{}{
-			"channel": "", // channel login
+			"channel": channelLogin, // channel login
 		},
-	},
-	"ClaimCommunityPoints": {
+	}
+}
+
+// ClaimCommunityPoints creates a ClaimCommunityPoints operation
+func (b *GQLOperationBuilder) ClaimCommunityPoints(claimID, channelID string) GQLOperation {
+	return GQLOperation{
 		OperationName: "ClaimCommunityPoints",
 		Extensions: &GQLExtensions{
 			PersistedQuery: &PersistedQuery{
@@ -132,12 +144,16 @@ var GQLOperations = map[string]GQLOperation{
 		},
 		Variables: map[string]interface{}{
 			"input": map[string]interface{}{
-				"claimID": "", // points claim_id
-				"channelID": "", // channel ID as a str
+				"claimID":   claimID, // points claim_id
+				"channelID": channelID, // channel ID as a str
 			},
 		},
-	},
-	"ClaimDrop": {
+	}
+}
+
+// ClaimDrop creates a ClaimDrop operation
+func (b *GQLOperationBuilder) ClaimDrop(dropInstanceID string) GQLOperation {
+	return GQLOperation{
 		OperationName: "DropsPage_ClaimDropRewards",
 		Extensions: &GQLExtensions{
 			PersistedQuery: &PersistedQuery{
@@ -147,11 +163,15 @@ var GQLOperations = map[string]GQLOperation{
 		},
 		Variables: map[string]interface{}{
 			"input": map[string]interface{}{
-				"dropInstanceID": "", // drop claim_id
+				"dropInstanceID": dropInstanceID, // drop claim_id
 			},
 		},
-	},
-	"ChannelPointsContext": {
+	}
+}
+
+// ChannelPointsContext creates a ChannelPointsContext operation
+func (b *GQLOperationBuilder) ChannelPointsContext(channelLogin string) GQLOperation {
+	return GQLOperation{
 		OperationName: "ChannelPointsContext",
 		Extensions: &GQLExtensions{
 			PersistedQuery: &PersistedQuery{
@@ -160,10 +180,14 @@ var GQLOperations = map[string]GQLOperation{
 			},
 		},
 		Variables: map[string]interface{}{
-			"channelLogin": "", // channel login
+			"channelLogin": channelLogin, // channel login
 		},
-	},
-	"Inventory": {
+	}
+}
+
+// Inventory creates an Inventory operation
+func (b *GQLOperationBuilder) Inventory() GQLOperation {
+	return GQLOperation{
 		OperationName: "Inventory",
 		Extensions: &GQLExtensions{
 			PersistedQuery: &PersistedQuery{
@@ -174,8 +198,12 @@ var GQLOperations = map[string]GQLOperation{
 		Variables: map[string]interface{}{
 			"fetchRewardCampaigns": false,
 		},
-	},
-	"CurrentDrop": {
+	}
+}
+
+// CurrentDrop creates a CurrentDrop operation
+func (b *GQLOperationBuilder) CurrentDrop(channelID string) GQLOperation {
+	return GQLOperation{
 		OperationName: "DropCurrentSessionContext",
 		Extensions: &GQLExtensions{
 			PersistedQuery: &PersistedQuery{
@@ -184,11 +212,15 @@ var GQLOperations = map[string]GQLOperation{
 			},
 		},
 		Variables: map[string]interface{}{
-			"channelID": "", // watched channel ID as a str
+			"channelID": channelID, // watched channel ID as a str
 			"channelLogin": "", // always empty string
 		},
-	},
-	"Campaigns": {
+	}
+}
+
+// Campaigns creates a Campaigns operation
+func (b *GQLOperationBuilder) Campaigns() GQLOperation {
+	return GQLOperation{
 		OperationName: "ViewerDropsDashboard",
 		Extensions: &GQLExtensions{
 			PersistedQuery: &PersistedQuery{
@@ -199,8 +231,12 @@ var GQLOperations = map[string]GQLOperation{
 		Variables: map[string]interface{}{
 			"fetchRewardCampaigns": false,
 		},
-	},
-	"CampaignDetails": {
+	}
+}
+
+// CampaignDetails creates a CampaignDetails operation
+func (b *GQLOperationBuilder) CampaignDetails(channelLogin, dropID string) GQLOperation {
+	return GQLOperation{
 		OperationName: "DropCampaignDetails",
 		Extensions: &GQLExtensions{
 			PersistedQuery: &PersistedQuery{
@@ -209,11 +245,15 @@ var GQLOperations = map[string]GQLOperation{
 			},
 		},
 		Variables: map[string]interface{}{
-			"channelLogin": "", // user login
-			"dropID": "", // campaign ID
+			"channelLogin": channelLogin, // user login
+			"dropID": dropID, // campaign ID
 		},
-	},
-	"AvailableDrops": {
+	}
+}
+
+// AvailableDrops creates an AvailableDrops operation
+func (b *GQLOperationBuilder) AvailableDrops(channelID string) GQLOperation {
+	return GQLOperation{
 		OperationName: "DropsHighlightService_AvailableDrops",
 		Extensions: &GQLExtensions{
 			PersistedQuery: &PersistedQuery{
@@ -222,10 +262,14 @@ var GQLOperations = map[string]GQLOperation{
 			},
 		},
 		Variables: map[string]interface{}{
-			"channelID": "", // channel ID as a str
+			"channelID": channelID, // channel ID as a str
 		},
-	},
-	"PlaybackAccessToken": {
+	}
+}
+
+// PlaybackAccessToken creates a PlaybackAccessToken operation
+func (b *GQLOperationBuilder) PlaybackAccessToken(channelLogin string) GQLOperation {
+	return GQLOperation{
 		OperationName: "PlaybackAccessToken",
 		Extensions: &GQLExtensions{
 			PersistedQuery: &PersistedQuery{
@@ -234,15 +278,19 @@ var GQLOperations = map[string]GQLOperation{
 			},
 		},
 		Variables: map[string]interface{}{
-			"isLive": true,
-			"isVod": false,
-			"login": "", // channel login
-			"platform": "web",
-			"playerType": "site",
-			"vodID": "",
+			"isLive":      true,
+			"isVod":       false,
+			"login":       channelLogin, // channel login
+			"platform":    "web",
+			"playerType":  "site",
+			"vodID":       "",
 		},
-	},
-	"GameDirectory": {
+	}
+}
+
+// GameDirectory creates a GameDirectory operation
+func (b *GQLOperationBuilder) GameDirectory(slug string) GQLOperation {
+	return GQLOperation{
 		OperationName: "DirectoryPage_Game",
 		Extensions: &GQLExtensions{
 			PersistedQuery: &PersistedQuery{
@@ -252,14 +300,16 @@ var GQLOperations = map[string]GQLOperation{
 		},
 		Variables: map[string]interface{}{
 			"limit": 30, // limit of channels returned
-			"slug": "", // game slug
+			"slug": slug, // game slug
 			"imageWidth": 50,
 			"includeIsDJ": false,
 			"options": map[string]interface{}{
 				"broadcasterLanguages": []interface{}{},
 				"freeformTags": nil,
 				"includeRestricted": []interface{}{"SUB_ONLY_LIVE"},
-				"recommendationsContext": map[string]interface{}{"platform": "web"},
+				"recommendationsContext": map[string]interface{}{
+					"platform": "web",
+				},
 				"sort": "RELEVANCE", // also accepted: "VIEWER_COUNT"
 				"systemFilters": []interface{}{},
 				"tags": []interface{}{},
@@ -267,8 +317,12 @@ var GQLOperations = map[string]GQLOperation{
 			},
 			"sortTypeIsRecency": false,
 		},
-	},
-	"SlugRedirect": {
+	}
+}
+
+// SlugRedirect creates a SlugRedirect operation
+func (b *GQLOperationBuilder) SlugRedirect(gameName string) GQLOperation {
+	return GQLOperation{
 		OperationName: "DirectoryGameRedirect",
 		Extensions: &GQLExtensions{
 			PersistedQuery: &PersistedQuery{
@@ -277,9 +331,9 @@ var GQLOperations = map[string]GQLOperation{
 			},
 		},
 		Variables: map[string]interface{}{
-			"name": "", // game name
+			"name": gameName, // game name
 		},
-	},
+	}
 }
 
 // New creates a new Twitch client
@@ -491,11 +545,8 @@ func (c *Client) GraphQLRequest(operations []GQLOperation) ([]map[string]interfa
 
 // ResolveGameSlug resolves a game name to its slug using SlugRedirect
 func (c *Client) ResolveGameSlug(gameName string) (string, error) {
-	op := GQLOperations["SlugRedirect"]
-	// Set the required name variable
-	op.Variables = map[string]interface{}{
-		"name": gameName,
-	}
+	builder := NewGQLOperationBuilder()
+	op := builder.SlugRedirect(gameName)
 
 	fmt.Printf("Resolving game slug for: %s\n", gameName)
 
@@ -545,29 +596,8 @@ func (c *Client) AddGame(gameName string) (*Game, error) {
 
 // GetStreamsForGame gets live streams for a specific game using correct operation and variables
 func (c *Client) GetStreamsForGame(gameNameOrID string, limit int) ([]Stream, error) {
-	// Use the correct operation name from your GQLOperations
-	op := GQLOperations["GameDirectory"]
-	
-	// Set the required variables according to your GQLOperations definition
-	op.Variables = map[string]interface{}{
-		"limit":     limit,
-		"slug":      gameNameOrID, // Use slug instead of name
-		"imageWidth": 50,
-		"includeIsDJ": false,
-		"options": map[string]interface{}{
-			"broadcasterLanguages": []interface{}{},
-			"freeformTags":         nil,
-			"includeRestricted":    []interface{}{"SUB_ONLY_LIVE"},
-			"recommendationsContext": map[string]interface{}{
-				"platform": "web",
-			},
-			"sort":          "RELEVANCE",
-			"systemFilters": []interface{}{},
-			"tags":          []interface{}{},
-			"requestID":     "JIRA-VXP-2397",
-		},
-		"sortTypeIsRecency": false,
-	}
+	builder := NewGQLOperationBuilder()
+	op := builder.GameDirectory(gameNameOrID)
 
 	fmt.Printf("Getting streams for game: %s\n", gameNameOrID)
 
@@ -646,11 +676,9 @@ func (c *Client) GetStreamsForGame(gameNameOrID string, limit int) ([]Stream, er
 
 // WatchStream simulates watching a stream using the correct operation
 func (c *Client) WatchStream(channelLogin string) error {
-	op := GQLOperations["GetStreamInfo"]
-	// Set the required channel variable
-	op.Variables = map[string]interface{}{
-		"channel": channelLogin,
-	}
+	// Create a new operation using the builder
+	builder := NewGQLOperationBuilder()
+	op := builder.GetStreamInfo(channelLogin)
 
 	fmt.Printf("Watching stream: %s\n", channelLogin)
 
@@ -668,11 +696,8 @@ func (c *Client) GetDropCampaigns() ([]Campaign, error) {
 	fmt.Println("Getting drop campaigns")
 
 	// Try the Campaigns operation first (ViewerDropsDashboard)
-	op := GQLOperations["Campaigns"]
-	// Set the required variable
-	op.Variables = map[string]interface{}{
-		"fetchRewardCampaigns": false,
-	}
+	builder := NewGQLOperationBuilder()
+	op := builder.Campaigns()
 	
 	results, err := c.GraphQLRequest([]GQLOperation{op})
 	if err != nil {
@@ -680,10 +705,7 @@ func (c *Client) GetDropCampaigns() ([]Campaign, error) {
 			fmt.Println("Campaigns operation failed, trying Inventory...")
 			
 			// Try Inventory operation as fallback
-			inventoryOp := GQLOperations["Inventory"]
-			inventoryOp.Variables = map[string]interface{}{
-				"fetchRewardCampaigns": false,
-			}
+			inventoryOp := builder.Inventory()
 			
 			results, err = c.GraphQLRequest([]GQLOperation{inventoryOp})
 			if err != nil {
@@ -728,12 +750,8 @@ func (c *Client) GetDropCampaigns() ([]Campaign, error) {
 
 // GetCurrentDrop gets the current drop progress for a channel
 func (c *Client) GetCurrentDrop(channelID, channelLogin string) error {
-	op := GQLOperations["CurrentDrop"]
-	// Set the required variables
-	op.Variables = map[string]interface{}{
-		"channelID":    channelID,
-		"channelLogin": channelLogin, // or empty string as per your definition
-	}
+	builder := NewGQLOperationBuilder()
+	op := builder.CurrentDrop(channelID)
 
 	fmt.Printf("Getting current drop for channel: %s\n", channelLogin)
 
@@ -752,13 +770,8 @@ func (c *Client) GetCurrentDrop(channelID, channelLogin string) error {
 
 // ClaimDrop claims a drop using the correct operation
 func (c *Client) ClaimDrop(dropInstanceID string) error {
-	op := GQLOperations["ClaimDrop"]
-	// Set the required input variable
-	op.Variables = map[string]interface{}{
-		"input": map[string]interface{}{
-			"dropInstanceID": dropInstanceID,
-		},
-	}
+	builder := NewGQLOperationBuilder()
+	op := builder.ClaimDrop(dropInstanceID)
 
 	fmt.Printf("Claiming drop: %s\n", dropInstanceID)
 
@@ -778,11 +791,8 @@ func (c *Client) ClaimDrop(dropInstanceID string) error {
 
 // GetAvailableDrops gets available drops for a channel
 func (c *Client) GetAvailableDrops(channelID string) error {
-	op := GQLOperations["AvailableDrops"]
-	// Set the required channelID variable
-	op.Variables = map[string]interface{}{
-		"channelID": channelID,
-	}
+	builder := NewGQLOperationBuilder()
+	op := builder.AvailableDrops(channelID)
 
 	fmt.Printf("Getting available drops for channel ID: %s\n", channelID)
 
@@ -801,14 +811,8 @@ func (c *Client) GetAvailableDrops(channelID string) error {
 
 // ClaimCommunityPoints claims community points for a channel
 func (c *Client) ClaimCommunityPoints(claimID, channelID string) error {
-	op := GQLOperations["ClaimCommunityPoints"]
-	// Set the required input variables
-	op.Variables = map[string]interface{}{
-		"input": map[string]interface{}{
-			"claimID":   claimID,
-			"channelID": channelID,
-		},
-	}
+	builder := NewGQLOperationBuilder()
+	op := builder.ClaimCommunityPoints(claimID, channelID)
 
 	fmt.Printf("Claiming community points: %s for channel %s\n", claimID, channelID)
 
@@ -828,11 +832,8 @@ func (c *Client) ClaimCommunityPoints(claimID, channelID string) error {
 
 // GetChannelPointsContext gets channel points context for a channel
 func (c *Client) GetChannelPointsContext(channelLogin string) error {
-	op := GQLOperations["ChannelPointsContext"]
-	// Set the required channelLogin variable
-	op.Variables = map[string]interface{}{
-		"channelLogin": channelLogin,
-	}
+	builder := NewGQLOperationBuilder()
+	op := builder.ChannelPointsContext(channelLogin)
 
 	fmt.Printf("Getting channel points context for: %s\n", channelLogin)
 
@@ -851,12 +852,8 @@ func (c *Client) GetChannelPointsContext(channelLogin string) error {
 
 // GetCampaignDetails gets detailed information about a specific drop campaign
 func (c *Client) GetCampaignDetails(channelLogin, dropID string) error {
-	op := GQLOperations["CampaignDetails"]
-	// Set the required variables
-	op.Variables = map[string]interface{}{
-		"channelLogin": channelLogin,
-		"dropID":       dropID,
-	}
+	builder := NewGQLOperationBuilder()
+	op := builder.CampaignDetails(channelLogin, dropID)
 
 	fmt.Printf("Getting campaign details for drop %s on channel %s\n", dropID, channelLogin)
 
@@ -875,16 +872,8 @@ func (c *Client) GetCampaignDetails(channelLogin, dropID string) error {
 
 // GetPlaybackAccessToken gets a playback access token for a channel
 func (c *Client) GetPlaybackAccessToken(channelLogin string) error {
-	op := GQLOperations["PlaybackAccessToken"]
-	// Set the required variables
-	op.Variables = map[string]interface{}{
-		"isLive":     true,
-		"isVod":      false,
-		"login":      channelLogin,
-		"platform":   "web",
-		"playerType": "site",
-		"vodID":      "",
-	}
+	builder := NewGQLOperationBuilder()
+	op := builder.PlaybackAccessToken(channelLogin)
 
 	fmt.Printf("Getting playback access token for: %s\n", channelLogin)
 
