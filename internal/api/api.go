@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"twitchdropsfarmer/internal/miner"
@@ -154,20 +155,14 @@ func (h *Handler) AddGame(c *gin.Context) {
 		return
 	}
 
-	// Search for the game
-	games, err := h.twitchClient.SearchGames(req.Name)
+	// Use the simplified AddGame method that doesn't require search validation
+	game, err := h.twitchClient.AddGame(req.Name)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to search games: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add game: " + err.Error()})
 		return
 	}
 
-	if len(games) == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Game not found"})
-		return
-	}
-
-	// Add the first matching game
-	game := &games[0]
+	// Save the game to storage
 	if err := h.storage.AddGame(game); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save game: " + err.Error()})
 		return
@@ -175,7 +170,7 @@ func (h *Handler) AddGame(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"game": game,
-		"message": "Game added successfully",
+		"message": fmt.Sprintf("Game '%s' added successfully", game.DisplayName),
 	})
 }
 
@@ -206,6 +201,44 @@ func (h *Handler) ReorderGames(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"status": "reordered"})
+}
+
+func (h *Handler) GetGameStreams(c *gin.Context) {
+	gameNameOrID := c.Param("game")
+	limitStr := c.DefaultQuery("limit", "20")
+	
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil {
+		limit = 20
+	}
+	
+	if limit > 50 {
+		limit = 50
+	}
+
+	// The updated GetStreamsForGame now handles slug resolution automatically
+	streams, err := h.twitchClient.GetStreamsForGame(gameNameOrID, limit)
+	if err != nil {
+		// Check if it's a slug resolution issue
+		if strings.Contains(err.Error(), "game not found") {
+			c.JSON(http.StatusNotFound, gin.H{
+				"error": "Game not found: " + gameNameOrID,
+			})
+			return
+		}
+		
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to get streams: " + err.Error(),
+			"game": gameNameOrID,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"game": gameNameOrID,
+		"streamCount": len(streams),
+		"streams": streams,
+	})
 }
 
 // Drops endpoints
@@ -248,12 +281,67 @@ func (h *Handler) GetDrops(c *gin.Context) {
 func (h *Handler) ClaimDrop(c *gin.Context) {
 	dropID := c.Param("id")
 
-	// TODO: Implement drop claiming via GraphQL
-	// This would use a specific GraphQL mutation to claim the drop
+	// Use the new ClaimDrop method instead of TODO
+	err := h.twitchClient.ClaimDrop(dropID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to claim drop: " + err.Error(),
+			"dropId": dropID,
+		})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"status": "claimed",
 		"dropId": dropID,
+	})
+}
+
+func (h *Handler) GetCurrentDrop(c *gin.Context) {
+	channelID := c.Query("channelId")
+	channelLogin := c.Query("channelLogin")
+	
+	if channelID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "channelId is required"})
+		return
+	}
+
+	err := h.twitchClient.GetCurrentDrop(channelID, channelLogin)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to get current drop: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"message": "Check logs for drop progress details",
+	})
+}
+
+func (h *Handler) ClaimCommunityPoints(c *gin.Context) {
+	var req struct {
+		ClaimID   string `json:"claimId"`
+		ChannelID string `json:"channelId"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	err := h.twitchClient.ClaimCommunityPoints(req.ClaimID, req.ChannelID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to claim community points: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "claimed",
+		"claimId": req.ClaimID,
 	})
 }
 

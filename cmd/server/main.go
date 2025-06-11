@@ -92,7 +92,9 @@ func main() {
 
 		// Drops
 		apiV1.GET("/drops", apiHandler.GetDrops)
+		apiV1.GET("/drops/current", apiHandler.GetCurrentDrop)
 		apiV1.POST("/drops/:id/claim", apiHandler.ClaimDrop)
+		apiV1.POST("/points/claim", apiHandler.ClaimCommunityPoints)
 
 		// Miner control
 		apiV1.POST("/miner/start", apiHandler.StartMiner)
