@@ -289,29 +289,29 @@ func (b *GQLOperationBuilder) PlaybackAccessToken(channelLogin string) GQLOperat
 }
 
 // GameDirectory creates a GameDirectory operation
-func (b *GQLOperationBuilder) GameDirectory(slug string) GQLOperation {
+func (b *GQLOperationBuilder) GameDirectory(limit int, slug string, systemFilters []interface{}, includeRestricted []interface{}) GQLOperation {
 	return GQLOperation{
 		OperationName: "DirectoryPage_Game",
 		Extensions: &GQLExtensions{
 			PersistedQuery: &PersistedQuery{
 				Version:    1,
-				SHA256Hash: "df4bb6cc45055237bfaf3ead608bbafb79815c7100b6ee126719fac2a3924f8b",
+				SHA256Hash: "c7c9d5aad09155c4161d2382092dc44610367f3536aac39019ec2582ae5065f9",
 			},
 		},
 		Variables: map[string]interface{}{
-			"limit": 30, // limit of channels returned
+			"limit": limit, // limit of channels returned
 			"slug": slug, // game slug
 			"imageWidth": 50,
 			"includeIsDJ": false,
 			"options": map[string]interface{}{
 				"broadcasterLanguages": []interface{}{},
 				"freeformTags": nil,
-				"includeRestricted": []interface{}{"SUB_ONLY_LIVE"},
+				"includeRestricted": includeRestricted,
 				"recommendationsContext": map[string]interface{}{
 					"platform": "web",
 				},
 				"sort": "RELEVANCE", // also accepted: "VIEWER_COUNT"
-				"systemFilters": []interface{}{},
+				"systemFilters": systemFilters,
 				"tags": []interface{}{},
 				"requestID": "JIRA-VXP-2397",
 			},
@@ -597,7 +597,7 @@ func (c *Client) AddGame(gameName string) (*Game, error) {
 // GetStreamsForGame gets live streams for a specific game using correct operation and variables
 func (c *Client) GetStreamsForGame(gameNameOrID string, limit int) ([]Stream, error) {
 	builder := NewGQLOperationBuilder()
-	op := builder.GameDirectory(gameNameOrID)
+	op := builder.GameDirectory(limit, gameNameOrID, []interface{}{"DROPS_ENABLED"}, []interface{}{"SUB_ONLY_LIVE"})
 
 	fmt.Printf("Getting streams for game: %s\n", gameNameOrID)
 
