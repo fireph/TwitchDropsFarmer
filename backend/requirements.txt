@@ -1,0 +1,8 @@
+Flask==3.0.0
+Flask-CORS==4.0.0
+Flask-SocketIO==5.3.6
+aiohttp==3.9.1
+yarl==1.9.4
+python-socketio==5.10.0
+python-dotenv==1.0.0
+truststore==0.8.0

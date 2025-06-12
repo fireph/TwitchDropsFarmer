@@ -8,36 +8,38 @@ RUN npm install
 COPY frontend/ ./
 RUN npm run build
 
-# Build stage for backend
-FROM golang:1.21-alpine AS backend-builder
+# Python backend stage
+FROM python:3.11-slim
 
 WORKDIR /app
-COPY go.mod go.sum ./
-RUN go mod download
 
-COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/server
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
 
-# Final stage
-FROM alpine:latest
+# Copy backend requirements and install Python dependencies
+COPY backend/requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
 
-RUN apk --no-cache add ca-certificates tzdata
-WORKDIR /root/
+# Copy backend code
+COPY backend/ ./backend/
 
-# Copy backend binary
-COPY --from=backend-builder /app/main .
-
-# Copy frontend build
-COPY --from=frontend-builder /app/frontend/dist ./web/
+# Copy frontend build from previous stage
+COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
 # Create data directory for persistent storage
 RUN mkdir -p /data
+
+# Set Python path
+ENV PYTHONPATH="/app/backend"
 
 # Expose port
 EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
+  CMD curl -f http://localhost:8080/health || exit 1
 
-CMD ["./main"]
+# Run the application
+CMD ["python", "backend/main.py"]

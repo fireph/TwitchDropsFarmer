@@ -25,11 +25,11 @@ const AuthModal: Component<AuthModalProps> = (props) => {
       setAuthStep('waiting');
       
       // Open Twitch auth page in a new window
-      const authWindow = window.open(data.verificationURI, '_blank', 'width=600,height=700');
+      const authWindow = window.open(data.verification_uri, '_blank', 'width=600,height=700');
       
-      // Start the callback process
+      // Start the callback process with the device code
       await api.post('/auth/callback', {
-        deviceCode: data.deviceCode,
+        deviceCode: data.device_code,  // Fix: pass the deviceCode from the auth data
         interval: data.interval,
       });
       
@@ -197,10 +197,10 @@ const AuthModal: Component<AuthModalProps> = (props) => {
                   </p>
                   <div class="flex items-center justify-between">
                     <div class="text-2xl font-mono font-bold text-twitch-purple">
-                      {authData()?.userCode}
+                      {authData()?.user_code}
                     </div>
                     <button
-                      onClick={() => copyToClipboard(authData()?.userCode)}
+                      onClick={() => copyToClipboard(authData()?.user_code)}
                       class="p-2 text-gray-500 hover:text-gray-700 dark:text-dark-text-secondary dark:hover:text-dark-text transition-colors"
                       title="Copy to clipboard"
                     >
@@ -210,7 +210,7 @@ const AuthModal: Component<AuthModalProps> = (props) => {
                     </button>
                   </div>
                   <p class="text-xs text-gray-500 dark:text-dark-text-secondary mt-2">
-                    Visit: {authData()?.verificationURI}
+                    Visit: {authData()?.verification_uri}
                   </p>
                 </div>
               </Show>
