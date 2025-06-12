@@ -4,7 +4,7 @@
   "description": "Modern web UI for TwitchDropsFarmer",
   "scripts": {
     "dev": "vite",
-    "build": "rm -rf ../web/* && vite build && cp -r dist/* ../web/",
+    "build": "vite build",
     "preview": "vite preview",
     "type-check": "tsc --noEmit"
   },
@@ -13,6 +13,7 @@
     "@solidjs/router": "^0.15.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "socket.io-client": "^4.8.1",
     "solid-heroicons": "^3.2.4",
     "solid-js": "^1.9.7",
     "tailwind-merge": "^3.3.1"

@@ -10,6 +10,9 @@ import { AuthProvider } from './context/AuthContext';
 import { WebSocketProvider } from './context/WebSocketContext';
 import './App.css';
 
+// Import Socket.IO client
+import { io, Socket } from 'socket.io-client';
+
 export interface Game {
   id: string;
   name: string;
@@ -81,44 +84,89 @@ const App: Component = () => {
     loading: true,
   });
 
-  // WebSocket connection for real-time updates
-  let ws: WebSocket | null = null;
+  // Socket.IO connection
+  let socket: Socket | null = null;
+  let reconnectAttempts = 0;
+  const maxReconnectAttempts = 5;
+  const reconnectDelay = 3000;
 
-  const connectWebSocket = () => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/api/v1/ws`;
+  const connectSocket = () => {
+    if (socket && socket.connected) {
+      return; // Already connected
+    }
+
+    console.log('Attempting to connect to Socket.IO server...');
     
-    ws = new WebSocket(wsUrl);
-    
-    ws.onopen = () => {
-      console.log('WebSocket connected');
-    };
-    
-    ws.onmessage = (event) => {
+    // Create Socket.IO connection
+    socket = io('/', {
+      transports: ['websocket', 'polling'], // Allow fallback to polling
+      timeout: 10000,
+      autoConnect: true,
+      reconnection: true,
+      reconnectionAttempts: maxReconnectAttempts,
+      reconnectionDelay: reconnectDelay,
+    });
+
+    socket.on('connect', () => {
+      console.log('Socket.IO connected successfully');
+      reconnectAttempts = 0;
+      
+      // Send a ping to test the connection
+      socket?.emit('ping');
+    });
+
+    socket.on('pong', () => {
+      console.log('Socket.IO ping/pong successful');
+    });
+
+    socket.on('message', (data) => {
       try {
-        const message = JSON.parse(event.data);
+        console.log('Received Socket.IO message:', data);
         
-        switch (message.type) {
+        switch (data.type) {
           case 'status':
-            setAppState('minerStatus', message.data);
+            setAppState('minerStatus', data.data);
             break;
           case 'log':
-            setAppState('logs', (logs) => [...logs, message.data].slice(-1000));
+            setAppState('logs', (logs) => [...logs, data.data].slice(-1000));
             break;
+          default:
+            console.log('Unknown message type:', data.type);
         }
       } catch (error) {
-        console.error('Failed to parse WebSocket message:', error);
+        console.error('Failed to parse Socket.IO message:', error);
       }
-    };
-    
-    ws.onclose = () => {
-      console.log('WebSocket disconnected, attempting to reconnect...');
-      setTimeout(connectWebSocket, 3000);
-    };
-    
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
+    });
+
+    socket.on('disconnect', (reason) => {
+      console.log('Socket.IO disconnected:', reason);
+      
+      if (reason === 'io server disconnect') {
+        // The disconnection was initiated by the server, reconnect manually
+        socket?.connect();
+      }
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('Socket.IO connection error:', error);
+      reconnectAttempts++;
+      
+      if (reconnectAttempts >= maxReconnectAttempts) {
+        console.error('Max reconnection attempts reached');
+      }
+    });
+
+    socket.on('error', (error) => {
+      console.error('Socket.IO error:', error);
+    });
+  };
+
+  const disconnectSocket = () => {
+    if (socket) {
+      console.log('Disconnecting Socket.IO...');
+      socket.disconnect();
+      socket = null;
+    }
   };
 
   // API helper functions
@@ -165,7 +213,18 @@ const App: Component = () => {
       
       // Check authentication status
       const authStatus = await api.get('/auth/status');
+      console.log('Auth status response:', authStatus);
       setAppState('authenticated', authStatus.authenticated);
+      
+      // Also get debug info if not authenticated
+      if (!authStatus.authenticated) {
+        try {
+          const debugInfo = await api.get('/debug/auth');
+          console.log('Auth debug info:', debugInfo);
+        } catch (debugError) {
+          console.log('Could not get debug info:', debugError);
+        }
+      }
       
       if (authStatus.authenticated) {
         // Load games, drops, and settings
@@ -280,13 +339,11 @@ const App: Component = () => {
 
   onMount(() => {
     loadData();
-    connectWebSocket();
+    connectSocket();
   });
 
   onCleanup(() => {
-    if (ws) {
-      ws.close();
-    }
+    disconnectSocket();
   });
 
   const contextValue = {
