@@ -8,7 +8,7 @@ echo "Starting Twitch Drops Farmer..."
 
 # Check if Go is installed
 if ! command -v go &> /dev/null; then
-    echo "Go is not installed. Please install Go 1.21 or higher."
+    echo "Go is not installed. Please install Go 1.24 or higher."
     exit 1
 fi
 
@@ -18,13 +18,13 @@ go mod tidy
 
 # Build the application
 echo "Building application..."
-go build -o twitchdropsminer
+go build .
 
 # Check if build succeeded
 if [ $? -eq 0 ]; then
     echo "Build successful!"
     echo "Starting server on http://localhost:8080"
-    ./twitchdropsminer
+    ./twitchdropsfarmer
 else
     echo "Build failed!"
     exit 1
