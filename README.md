@@ -17,7 +17,7 @@ A Go-based implementation of TwitchDropsMiner with a modern web interface and co
 
 Similar layout to the original TwitchDropsMiner but with a modern, dark-mode interface.
 
-![TwitchDropsFarmer Interface](https://github.com/user-attachments/assets/4caeac6a-4272-4fcd-8652-76c3d0d03887)
+![TwitchDropsFarmer Web UI](https://github.com/user-attachments/assets/61813255-94cb-4102-8f43-f50b321f899a)
 
 ## Quick Start
 
