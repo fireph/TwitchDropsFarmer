@@ -17,11 +17,13 @@ A Go-based implementation of TwitchDropsMiner with a modern web interface and co
 
 Similar layout to the original TwitchDropsMiner but with a modern, dark-mode interface.
 
+![TwitchDropsFarmer Interface](https://github.com/user-attachments/assets/4caeac6a-4272-4fcd-8652-76c3d0d03887)
+
 ## Quick Start
 
 ### Prerequisites
 
-- Go 1.21 or higher
+- Go 1.24 or higher
 - No Twitch app setup required! (Uses official Android app like TDM)
 
 ### Installation
