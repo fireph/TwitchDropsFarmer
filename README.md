@@ -1,17 +1,17 @@
-# Twitch Drops Farmer (Go + Web)
+# TwitchDropsFarmer
 
-A complete rewrite of [TwitchDropsMiner](https://github.com/DevilXD/TwitchDropsMiner) in Go with a modern web interface. This application automatically farms Twitch drops by watching streams with the same proven logic as the original Python version.
+A Go-based implementation of TwitchDropsMiner with a modern web interface and comprehensive API. This application automatically farms Twitch drops by watching streams using the exact same proven methods as the original TwitchDropsMiner.
 
-## Features
+## Key Features
 
-- **Automatic Drop Farming**: Watches Twitch streams to earn drops automatically
-- **OAuth Authentication**: Secure login via Twitch OAuth flow
-- **Real-time Updates**: WebSocket-powered live status updates
-- **Modern Web UI**: Dark mode, responsive design with TailwindCSS
-- **Campaign Management**: Automatic detection and switching between campaigns
-- **Progress Tracking**: Real-time progress monitoring for all active drops
-- **Auto-claiming**: Automatically claims completed drops
-- **Stream Selection**: Smart stream selection based on viewer count and availability
+- **🎯 Exact TDM Logic**: Uses identical GraphQL operations and authentication methods as TwitchDropsMiner
+- **📊 Real-time Progress**: Live drop progress tracking using Twitch's DropCurrentSessionContext API
+- **🔄 Sequential Drop Support**: Handles multi-drop campaigns (30min → 90min → 180min sequences)
+- **🌐 Modern Web Interface**: Real-time dashboard with WebSocket updates
+- **🔧 Comprehensive API**: Full REST API for external integrations
+- **🤖 Device Flow Auth**: Secure OAuth using Twitch's Android app credentials (no app setup required)
+- **⚡ Auto-switching**: Intelligent stream selection and campaign switching
+- **📱 Mobile-friendly**: Responsive design that works on all devices
 
 ## Screenshots
 
@@ -39,12 +39,12 @@ go mod tidy
 
 3. Run the application:
 ```bash
-go run main.go
+go run .
 ```
 
 4. Open your browser and navigate to `http://localhost:8080`
 
-**Note**: All user data is stored in the `./config` directory (login tokens, settings, database).
+**Note**: All user data is stored locally (tokens in SQLite, settings in config files).
 
 ## Configuration
 
@@ -69,27 +69,56 @@ The application includes a web-based settings interface where you can configure:
 
 ## API Documentation
 
-The application provides a REST API for programmatic access:
+The application provides a comprehensive REST API for programmatic access:
 
 ### Authentication Endpoints
-- `GET /api/auth/url` - Get OAuth authorization URL
-- `POST /api/auth/callback` - Handle OAuth callback
-- `POST /api/auth/logout` - Logout user
-- `GET /api/auth/status` - Check authentication status
+- `GET /api/auth/url` - Get OAuth device flow authorization URL
+- `POST /api/auth/callback` - Complete OAuth device flow with device code
+- `POST /api/auth/logout` - Logout and revoke tokens
+- `GET /api/auth/status` - Check authentication status and user info
 
-### Miner Endpoints
-- `GET /api/miner/status` - Get current miner status
-- `POST /api/miner/start` - Start the drop miner
-- `POST /api/miner/stop` - Stop the drop miner
+### Drop Mining Endpoints
+- `GET /api/miner/status` - Get detailed miner status (campaigns, streams, progress)
+- `GET /api/miner/current-drop` - Get currently active drop with real-time progress
+- `GET /api/miner/progress` - Get progress for all drops (completed + current + pending)
+- `POST /api/miner/start` - Start the drop mining process
+- `POST /api/miner/stop` - Stop the drop mining process
 
 ### Campaign Endpoints
-- `GET /api/campaigns/` - List all campaigns
-- `GET /api/campaigns/:id` - Get specific campaign
-- `GET /api/campaigns/:id/drops` - Get drops for campaign
+- `GET /api/campaigns/` - List all available drop campaigns
+- `GET /api/campaigns/:id` - Get detailed campaign information
+- `GET /api/campaigns/:id/drops` - Get all drops for a specific campaign
 
 ### User Endpoints
-- `GET /api/user/profile` - Get user profile
-- `GET /api/user/inventory` - Get user's drop inventory
+- `GET /api/user/profile` - Get authenticated user profile
+- `GET /api/user/inventory` - Get user's claimed drops inventory
+
+### Settings Endpoints
+- `GET /api/settings` - Get current application settings
+- `PUT /api/settings` - Update application settings
+
+### Stream Endpoints
+- `GET /api/streams/game/:gameId?limit=10` - Get live streams for a specific game
+- `GET /api/streams/current` - Get currently watched stream
+
+### Example API Usage
+
+```bash
+# Check if miner is running and what it's doing
+curl http://localhost:8080/api/miner/status
+
+# Get real-time progress for all drops
+curl http://localhost:8080/api/miner/progress
+
+# Get currently active drop with live progress
+curl http://localhost:8080/api/miner/current-drop
+
+# Start drop mining
+curl -X POST http://localhost:8080/api/miner/start
+
+# Get all available campaigns
+curl http://localhost:8080/api/campaigns/
+```
 
 ## WebSocket Events
 
@@ -125,16 +154,28 @@ The project follows the guidelines in `CLAUDE.md`:
 
 ```bash
 # Build for current platform
-go build -o twitchdropsminer
+go build -o twitchdropsfarmer
 
 # Build for Linux
-GOOS=linux GOARCH=amd64 go build -o twitchdropsminer-linux
+GOOS=linux GOARCH=amd64 go build -o twitchdropsfarmer-linux
 
 # Build for Windows
-GOOS=windows GOARCH=amd64 go build -o twitchdropsminer.exe
+GOOS=windows GOARCH=amd64 go build -o twitchdropsfarmer.exe
 
 # Build for macOS
-GOOS=darwin GOARCH=amd64 go build -o twitchdropsminer-macos
+GOOS=darwin GOARCH=amd64 go build -o twitchdropsfarmer-macos
+```
+
+### Live Development
+
+For development with auto-reload:
+
+```bash
+# Install air for live reloading
+go install github.com/air-verse/air@latest
+
+# Run with auto-reload
+air
 ```
 
 ### Running in Production
@@ -144,12 +185,28 @@ GOOS=darwin GOARCH=amd64 go build -o twitchdropsminer-macos
 3. Set up proper firewall rules
 4. Consider using a process manager like systemd
 
+## Technical Implementation
+
+### Drop Progress Tracking
+
+This implementation uses the exact same approach as TwitchDropsMiner:
+
+1. **Real-time Progress**: Uses Twitch's `DropCurrentSessionContext` GraphQL operation to get live progress data that matches exactly what appears on twitch.tv
+2. **Sequential Drop Logic**: For multi-drop campaigns (e.g., 30min → 90min → 180min), automatically determines completion status of previous drops based on the currently active drop
+3. **Accurate Channel Targeting**: Uses the correct channel user ID (not stream ID) for GraphQL operations
+
+### Authentication
+
+- Uses Twitch's OAuth Device Flow with Android app credentials (same as TDM)
+- No need to create your own Twitch app
+- Tokens are stored securely and refreshed automatically
+
 ## Security Considerations
 
 - OAuth tokens are stored securely in SQLite database
-- CORS is configured for web interface
-- Rate limiting is implemented for API endpoints
+- CORS is configured for web interface  
 - No sensitive data is logged
+- Uses HTTPS-ready configuration
 
 ## Contributing
 
