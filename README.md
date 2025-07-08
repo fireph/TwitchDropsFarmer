@@ -52,8 +52,6 @@ go run .
 
 ### Environment Variables
 
-- `TWITCH_CLIENT_ID`: Twitch client ID (defaults to Android app, no change needed)
-- `TWITCH_CLIENT_SECRET`: Not required for device flow
 - `SERVER_ADDRESS`: Server listen address (default: `:8080`)
 - `DATABASE_PATH`: SQLite database file path (default: `drops.db`)
 - `WEBHOOK_URL`: Optional webhook URL for notifications
