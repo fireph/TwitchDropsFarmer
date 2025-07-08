@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Twitch Drops Farmer</title>
+    <link href="/css/main.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        'twitch-purple': '#9146FF',
+                        'twitch-purple-dark': '#772CE8',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="h-full bg-gray-100 dark:bg-gray-900 transition-colors">
+    <div class="min-h-full flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+        <div class="sm:mx-auto sm:w-full sm:max-w-md">
+            <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
+                Twitch Drops Farmer
+            </h2>
+            <p class="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
+                Login with your Twitch account to start farming drops
+            </p>
+        </div>
+
+        <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+            <div class="bg-white dark:bg-gray-800 py-8 px-4 shadow sm:rounded-lg sm:px-10">
+                <div class="space-y-6">
+                    <!-- Login Status -->
+                    <div id="login-status" class="hidden">
+                        <div class="rounded-md bg-green-50 dark:bg-green-900 p-4">
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    <svg class="h-5 w-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm font-medium text-green-800 dark:text-green-200">
+                                        Successfully logged in! Redirecting to dashboard...
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Error Message -->
+                    <div id="error-message" class="hidden">
+                        <div class="rounded-md bg-red-50 dark:bg-red-900 p-4">
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 15.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                    </svg>
+                                </div>
+                                <div class="ml-3">
+                                    <p id="error-text" class="text-sm font-medium text-red-800 dark:text-red-200">
+                                        An error occurred during login.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Login Form -->
+                    <div id="login-form">
+                        <div class="text-center">
+                            <div class="mb-6">
+                                <svg class="mx-auto h-16 w-16 text-twitch-purple" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428C1.714 21.068 2.647 22 3.571 22h16.286c.924 0 1.857-.932 1.857-2.286V3.429C21.714 2.575 20.781 1.714 19.857 1.714H7.714zm14.571 4.286v14.857c0 .924-.932 1.857-2.285 1.857H3.429C2.575 20 1.714 19.068 1.714 18.143V4.286c0-.854.861-1.715 1.715-1.715h14.857c.924 0 1.857.861 1.857 1.715z"/>
+                                </svg>
+                            </div>
+                            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                                Connect your Twitch account
+                            </h3>
+                            <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                                We need access to your Twitch account to monitor drop campaigns and claim rewards automatically.
+                            </p>
+                            <button id="twitch-login-btn" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-twitch-purple hover:bg-twitch-purple-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-twitch-purple transition-colors">
+                                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428C1.714 21.068 2.647 22 3.571 22h16.286c.924 0 1.857-.932 1.857-2.286V3.429C21.714 2.575 20.781 1.714 19.857 1.714H7.714zm14.571 4.286v14.857c0 .924-.932 1.857-2.285 1.857H3.429C2.575 20 1.714 19.068 1.714 18.143V4.286c0-.854.861-1.715 1.715-1.715h14.857c.924 0 1.857.861 1.857 1.715z"/>
+                                </svg>
+                                Login with Twitch
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Loading State -->
+                    <div id="loading-state" class="hidden">
+                        <div class="text-center">
+                            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-twitch-purple"></div>
+                            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                                Connecting to Twitch...
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-8 border-t border-gray-200 dark:border-gray-700 pt-6">
+                    <div class="text-center">
+                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                            By logging in, you agree to allow this application to access your Twitch account for drop farming purposes.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/js/services/api.js"></script>
+    <script>
+        // Handle URL parameters for OAuth callback
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const state = urlParams.get('state');
+        const error = urlParams.get('error');
+
+        if (error) {
+            showError('Login cancelled or failed: ' + error);
+        } else if (code && state) {
+            // Handle OAuth callback
+            handleOAuthCallback(code, state);
+        }
+
+        // Initialize login page
+        document.addEventListener('DOMContentLoaded', function() {
+            const loginBtn = document.getElementById('twitch-login-btn');
+            
+            if (loginBtn) {
+                loginBtn.addEventListener('click', function() {
+                    initiateLogin();
+                });
+            }
+        });
+
+        async function initiateLogin() {
+            try {
+                showLoading();
+                
+                const response = await fetch('/api/auth/url');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Store device code for reference
+                    sessionStorage.setItem('device_code', data.device_code);
+                    
+                    // Use the verification_uri directly - Twitch already includes the device code
+                    const activationUrl = data.verification_uri;
+                    
+                    // Show device code info
+                    showDeviceCode(data, activationUrl);
+                    
+                    // Start polling for authorization
+                    startTokenPolling(data);
+                    
+                } else {
+                    showError('Failed to initiate login: ' + data.error);
+                }
+            } catch (error) {
+                showError('Network error: ' + error.message);
+            }
+        }
+
+        function showDeviceCode(data, activationUrl) {
+            document.getElementById('loading-state').classList.add('hidden');
+            document.getElementById('login-form').innerHTML = `
+                <div class="text-center">
+                    <div class="mb-6">
+                        <svg class="mx-auto h-16 w-16 text-twitch-purple" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428C1.714 21.068 2.647 22 3.571 22h16.286c.924 0 1.857-.932 1.857-2.286V3.429C21.714 2.575 20.781 1.714 19.857 1.714H7.714zm14.571 4.286v14.857c0 .924-.932 1.857-2.285 1.857H3.429C2.575 20 1.714 19.068 1.714 18.143V4.286c0-.854.861-1.715 1.715-1.715h14.857c.924 0 1.857.861 1.857 1.715z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                        Almost there!
+                    </h3>
+                    <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-4">
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                            1. A new tab will open to Twitch activation page
+                        </p>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                            2. Enter this code when prompted:
+                        </p>
+                        <div class="bg-white dark:bg-gray-800 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-3 mb-2">
+                            <code class="text-2xl font-bold text-twitch-purple">${data.user_code}</code>
+                        </div>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                            Code expires in ${Math.floor(data.expires_in / 60)} minutes
+                        </p>
+                    </div>
+                    <button onclick="window.open('${activationUrl}', '_blank')" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-twitch-purple hover:bg-twitch-purple-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-twitch-purple transition-colors">
+                        Open Twitch Activation Page
+                    </button>
+                </div>
+            `;
+            
+            // Auto-open the activation page
+            window.open(activationUrl, '_blank');
+        }
+
+        async function startTokenPolling(data) {
+            try {
+                // Start the polling process
+                await fetch('/api/auth/callback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ device_code: data.device_code })
+                });
+                
+                // Poll for authentication status
+                const pollInterval = setInterval(async () => {
+                    try {
+                        const response = await fetch('/api/auth/status');
+                        const status = await response.json();
+                        
+                        if (status.is_logged_in) {
+                            clearInterval(pollInterval);
+                            showSuccess();
+                            setTimeout(() => {
+                                window.location.href = '/';
+                            }, 1500);
+                        }
+                    } catch (error) {
+                        console.error('Polling error:', error);
+                    }
+                }, data.interval * 1000);
+                
+                // Stop polling after expiry time
+                setTimeout(() => {
+                    clearInterval(pollInterval);
+                    showError('Authentication timed out. Please try again.');
+                }, data.expires_in * 1000);
+                
+            } catch (error) {
+                showError('Authentication failed: ' + error.message);
+            }
+        }
+
+        async function handleOAuthCallback(code, state) {
+            try {
+                showLoading();
+                
+                // Verify state parameter
+                const storedState = sessionStorage.getItem('oauth_state');
+                if (state !== storedState) {
+                    showError('Invalid state parameter. Please try logging in again.');
+                    return;
+                }
+
+                const response = await fetch('/api/auth/callback', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        code: code,
+                        state: state
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showSuccess();
+                    
+                    // Clear stored state
+                    sessionStorage.removeItem('oauth_state');
+                    
+                    // Redirect to dashboard after a short delay
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 1500);
+                } else {
+                    showError('Login failed: ' + data.error);
+                }
+            } catch (error) {
+                showError('Network error: ' + error.message);
+            }
+        }
+
+        function showLoading() {
+            document.getElementById('login-form').classList.add('hidden');
+            document.getElementById('loading-state').classList.remove('hidden');
+            document.getElementById('error-message').classList.add('hidden');
+        }
+
+        function showSuccess() {
+            document.getElementById('loading-state').classList.add('hidden');
+            document.getElementById('login-status').classList.remove('hidden');
+            document.getElementById('error-message').classList.add('hidden');
+        }
+
+        function showError(message) {
+            document.getElementById('loading-state').classList.add('hidden');
+            document.getElementById('login-form').classList.remove('hidden');
+            document.getElementById('error-text').textContent = message;
+            document.getElementById('error-message').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
