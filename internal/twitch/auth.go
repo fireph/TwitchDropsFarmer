@@ -41,12 +41,12 @@ type DeviceCodeResponse struct {
 }
 
 type DeviceTokenPollResponse struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	ExpiresIn    int    `json:"expires_in"`
-	Scope        string `json:"scope"`
-	TokenType    string `json:"token_type"`
-	Error        string `json:"error"`
+	AccessToken      string `json:"access_token"`
+	RefreshToken     string `json:"refresh_token"`
+	ExpiresIn        int    `json:"expires_in"`
+	Scope            string `json:"scope"`
+	TokenType        string `json:"token_type"`
+	Error            string `json:"error"`
 	ErrorDescription string `json:"error_description"`
 }
 

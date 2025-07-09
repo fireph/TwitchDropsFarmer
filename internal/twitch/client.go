@@ -18,17 +18,17 @@ import (
 type Client struct {
 	authManager *AuthManager
 	gqlClient   *GraphQLClient // TDM-style GraphQL client
-	
+
 	// Authentication state
 	mu         sync.RWMutex
 	token      *oauth2.Token
 	user       *User
 	isLoggedIn bool
-	
+
 	// TDM-style session data
 	sessionID string
 	deviceID  string
-	
+
 	// Client configuration
 	clientID     string
 	clientSecret string
@@ -49,10 +49,10 @@ func NewClient(clientID, clientSecret string) *Client {
 		sessionID:    generateNonce(16), // 16 char hex string like TDM
 		deviceID:     generateNonce(32), // 32 char hex string like TDM
 	}
-	
+
 	// Try to load existing token
 	client.loadStoredToken()
-	
+
 	return client
 }
 
@@ -66,7 +66,7 @@ func (c *Client) loadStoredToken() {
 	// Validate the token before using it (don't check expiry, let Twitch decide)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	
+
 	user, err := c.authManager.ValidateToken(ctx, token.AccessToken)
 	if err != nil {
 		logrus.Debugf("Stored token invalid: %v", err)
@@ -77,7 +77,7 @@ func (c *Client) loadStoredToken() {
 
 	// Token is valid, set it and extend expiry to 1 year like TDM
 	token.Expiry = time.Now().Add(365 * 24 * time.Hour) // 1 year
-	
+
 	c.mu.Lock()
 	c.token = token
 	c.user = user
@@ -204,7 +204,7 @@ func (c *Client) GetDropCampaigns(ctx context.Context) ([]Campaign, error) {
 	c.mu.RLock()
 	gqlClient := c.gqlClient
 	c.mu.RUnlock()
-	
+
 	if gqlClient == nil {
 		return nil, fmt.Errorf("not authenticated - GraphQL client not initialized")
 	}
@@ -229,11 +229,11 @@ func (c *Client) GetCampaignDetails(ctx context.Context, campaignID string) (*Ca
 	gqlClient := c.gqlClient
 	user := c.user
 	c.mu.RUnlock()
-	
+
 	if gqlClient == nil {
 		return nil, fmt.Errorf("not authenticated - GraphQL client not initialized")
 	}
-	
+
 	if user == nil {
 		return nil, fmt.Errorf("user not available")
 	}
@@ -257,15 +257,15 @@ func (c *Client) GetCurrentDropProgress(ctx context.Context, channelID string) (
 	c.mu.RLock()
 	gqlClient := c.gqlClient
 	c.mu.RUnlock()
-	
+
 	if gqlClient == nil {
 		return nil, fmt.Errorf("not authenticated - GraphQL client not initialized")
 	}
 
 	// Use TDM's exact DropCurrentSessionContext operation
 	operation, err := GetOperation("CurrentDrop", map[string]interface{}{
-		"channelID":    channelID,    // channel ID as string
-		"channelLogin": "",           // always empty string per TDM
+		"channelID":    channelID, // channel ID as string
+		"channelLogin": "",        // always empty string per TDM
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get CurrentDrop operation: %w", err)
@@ -312,13 +312,13 @@ func (c *Client) parseCurrentDropResponse(data interface{}) (*CurrentDropProgres
 
 	// Extract progress data like TDM does
 	progress := &CurrentDropProgress{}
-	
+
 	if currentMinutes, ok := sessionMap["currentMinutesWatched"].(float64); ok {
 		progress.CurrentMinutesWatched = int(currentMinutes)
 	}
-	
+
 	progress.DropID = getString(sessionMap, "dropID")
-	
+
 	logrus.Infof("=== SUCCESS: Real Progress from DropCurrentSessionContext ===")
 	logrus.Infof("Drop ID: %s, Current Minutes: %d", progress.DropID, progress.CurrentMinutesWatched)
 
@@ -334,33 +334,33 @@ func (c *Client) parseAvailableDropsResponse(data interface{}) (*CurrentDropProg
 func (c *Client) isAuthError(err error) bool {
 	// Check if error indicates authentication issues
 	errStr := err.Error()
-	return strings.Contains(errStr, "401") || 
-		   strings.Contains(errStr, "unauthorized") || 
-		   strings.Contains(errStr, "invalid token") ||
-		   strings.Contains(errStr, "token validation failed")
+	return strings.Contains(errStr, "401") ||
+		strings.Contains(errStr, "unauthorized") ||
+		strings.Contains(errStr, "invalid token") ||
+		strings.Contains(errStr, "token validation failed")
 }
 
 func (c *Client) clearToken() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	c.token = nil
 	c.user = nil
 	c.isLoggedIn = false
-	c.gqlClient = nil  // Clear TDM GraphQL client
+	c.gqlClient = nil // Clear TDM GraphQL client
 	config.DeleteToken()
 }
 
-func (c *Client) GetStreamsForGame(ctx context.Context, gameName string, limit int) ([]Stream, error) {
+func (c *Client) GetStreamsForGame(ctx context.Context, gameSlug string, limit int) ([]Stream, error) {
 	c.mu.RLock()
 	gqlClient := c.gqlClient
 	c.mu.RUnlock()
-	
+
 	if gqlClient == nil {
 		return nil, fmt.Errorf("not authenticated - GraphQL client not initialized")
 	}
 
-	streams, err := gqlClient.GetStreamsForGame(ctx, gameName, limit)
+	streams, err := gqlClient.GetStreamsForGame(ctx, gameSlug, limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get streams for game: %w", err)
 	}
@@ -368,12 +368,42 @@ func (c *Client) GetStreamsForGame(ctx context.Context, gameName string, limit i
 	return streams, nil
 }
 
+// GetStreamsForGameName gets streams for a game by name, resolving the slug if needed
+func (c *Client) GetStreamsForGameName(ctx context.Context, gameName string, limit int) ([]Stream, error) {
+	// First try to get the slug from the already resolved game name
+	slugInfo, err := c.GetGameSlug(ctx, gameName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve game slug for '%s': %w", gameName, err)
+	}
+
+	// Now get streams using the resolved slug
+	return c.GetStreamsForGame(ctx, slugInfo.Slug, limit)
+}
+
+// GetGameSlug converts a game name to its Twitch slug and ID
+func (c *Client) GetGameSlug(ctx context.Context, gameName string) (*GameSlugInfo, error) {
+	c.mu.RLock()
+	gqlClient := c.gqlClient
+	c.mu.RUnlock()
+
+	if gqlClient == nil {
+		return nil, fmt.Errorf("not authenticated - GraphQL client not initialized")
+	}
+
+	slugInfo, err := gqlClient.GetGameSlug(ctx, gameName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get game slug: %w", err)
+	}
+
+	return slugInfo, nil
+}
+
 // StartWatching initiates stream watching like TDM
 func (c *Client) StartWatching(ctx context.Context, channelLogin string) (*WatchingSession, error) {
 	c.mu.RLock()
 	gqlClient := c.gqlClient
 	c.mu.RUnlock()
-	
+
 	if gqlClient == nil {
 		return nil, fmt.Errorf("not authenticated - GraphQL client not initialized")
 	}
@@ -413,7 +443,7 @@ func (c *Client) ClaimDrop(ctx context.Context, dropInstanceID string) error {
 	c.mu.RLock()
 	gqlClient := c.gqlClient
 	c.mu.RUnlock()
-	
+
 	if gqlClient == nil {
 		return fmt.Errorf("not authenticated - GraphQL client not initialized")
 	}
@@ -429,7 +459,7 @@ func (c *Client) GetInventory(ctx context.Context) (*Inventory, error) {
 	c.mu.RLock()
 	gqlClient := c.gqlClient
 	c.mu.RUnlock()
-	
+
 	if gqlClient == nil {
 		return nil, fmt.Errorf("not authenticated - GraphQL client not initialized")
 	}

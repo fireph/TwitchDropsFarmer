@@ -20,11 +20,11 @@ const (
 
 // GraphQLClient handles GraphQL requests to Twitch, exactly like TDM
 type GraphQLClient struct {
-	httpClient   *http.Client
-	clientInfo   *ClientInfo
-	accessToken  string
-	sessionID    string
-	deviceID     string
+	httpClient  *http.Client
+	clientInfo  *ClientInfo
+	accessToken string
+	sessionID   string
+	deviceID    string
 }
 
 // ClientInfo matches TDM's ClientType.ANDROID_APP
@@ -194,14 +194,13 @@ func (g *GraphQLClient) GetInventory(ctx context.Context) (*Inventory, error) {
 }
 
 // GetStreamsForGame fetches live streams for a specific game using TDM's approach
-func (g *GraphQLClient) GetStreamsForGame(ctx context.Context, gameName string, limit int) ([]Stream, error) {
-	// Convert game name to Twitch slug format (like TDM does)
-	slug := gameNameToSlug(gameName)
-	logrus.Debugf("Converted game name '%s' to slug '%s'", gameName, slug)
+func (g *GraphQLClient) GetStreamsForGame(ctx context.Context, gameSlug string, limit int) ([]Stream, error) {
+	// Use the provided slug directly (no conversion needed)
+	logrus.Debugf("Using game slug '%s' for stream query", gameSlug)
 
 	// Use TDM's GameDirectory operation with exact parameters
 	operation, err := GetOperation("GameDirectory", map[string]interface{}{
-		"slug":  slug,
+		"slug":  gameSlug,
 		"limit": limit,
 	})
 	if err != nil {
@@ -219,7 +218,7 @@ func (g *GraphQLClient) GetStreamsForGame(ctx context.Context, gameName string, 
 		return nil, fmt.Errorf("failed to parse streams: %w", err)
 	}
 
-	logrus.Debugf("Found %d streams for game '%s'", len(streams), gameName)
+	logrus.Debugf("Found %d streams for game slug '%s'", len(streams), gameSlug)
 	return streams, nil
 }
 
@@ -242,8 +241,83 @@ func (g *GraphQLClient) ClaimDrop(ctx context.Context, dropInstanceID string) er
 
 	// Check for successful claim (simplified for now)
 	logrus.Debugf("Drop claim response: %+v", resp.Data)
-	
+
 	return nil
+}
+
+// GetGameSlug converts a game name to its Twitch slug using DirectoryGameRedirect
+func (g *GraphQLClient) GetGameSlug(ctx context.Context, gameName string) (*GameSlugInfo, error) {
+	// Use TDM's exact SlugRedirect operation
+	operation, err := GetOperation("SlugRedirect", map[string]interface{}{
+		"name": gameName,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get SlugRedirect operation: %w", err)
+	}
+
+	resp, err := g.GQLRequest(ctx, operation)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute SlugRedirect query: %w", err)
+	}
+
+	// Parse slug info from response
+	slugInfo, err := g.parseSlugRedirectResponse(resp.Data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse slug redirect: %w", err)
+	}
+
+	return slugInfo, nil
+}
+
+// parseSlugRedirectResponse parses the slug redirect response
+func (g *GraphQLClient) parseSlugRedirectResponse(data interface{}) (*GameSlugInfo, error) {
+	// Debug: Log the full response structure
+	responseJSON, _ := json.MarshalIndent(data, "", "  ")
+	logrus.Debugf("SlugRedirect response structure:\n%s", string(responseJSON))
+
+	dataMap, ok := data.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid response data format")
+	}
+
+	// Debug: Log available keys
+	logrus.Debugf("Available keys in response: %+v", getKeys(dataMap))
+
+	gameDirectory, ok := dataMap["gameDirectory"]
+	if !ok || gameDirectory == nil {
+		// Let's try different possible field names
+		if game, ok := dataMap["game"]; ok {
+			gameDirectory = game
+		} else if directoryGame, ok := dataMap["directoryGame"]; ok {
+			gameDirectory = directoryGame
+		} else {
+			return nil, fmt.Errorf("no gameDirectory in response (available keys: %+v)", getKeys(dataMap))
+		}
+	}
+
+	gameDirectoryMap, ok := gameDirectory.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid gameDirectory format")
+	}
+
+	// Debug: Log available keys in gameDirectory
+	logrus.Debugf("Available keys in gameDirectory: %+v", getKeys(gameDirectoryMap))
+
+	// Extract slug and ID from the response
+	slug, ok := gameDirectoryMap["slug"].(string)
+	if !ok {
+		return nil, fmt.Errorf("no slug in gameDirectory (available keys: %+v)", getKeys(gameDirectoryMap))
+	}
+
+	id, ok := gameDirectoryMap["id"].(string)
+	if !ok {
+		return nil, fmt.Errorf("no id in gameDirectory (available keys: %+v)", getKeys(gameDirectoryMap))
+	}
+
+	return &GameSlugInfo{
+		ID:   id,
+		Slug: slug,
+	}, nil
 }
 
 // GetPlaybackAccessToken gets stream access token for watching (like TDM)
@@ -298,17 +372,17 @@ func (g *GraphQLClient) parsePlaybackTokenResponse(data interface{}) (*PlaybackA
 func (g *GraphQLClient) GetStreamURL(ctx context.Context, channelLogin string, token *PlaybackAccessToken) (string, error) {
 	// Build the HLS URL like TDM does
 	baseURL := "https://usher.ttvnw.net/api/channel/hls/" + channelLogin + ".m3u8"
-	
+
 	// Add query parameters like TDM
 	params := fmt.Sprintf("?client_id=%s&token=%s&sig=%s&allow_source=true&allow_audio_only=true&allow_spectre=false&p=%d",
 		g.clientInfo.ClientID,
 		token.Value,
 		token.Signature,
 		generateRandomNumber())
-	
+
 	streamURL := baseURL + params
 	logrus.Debugf("Generated stream URL for %s", channelLogin)
-	
+
 	return streamURL, nil
 }
 
@@ -343,13 +417,13 @@ func (g *GraphQLClient) SendWatchRequest(ctx context.Context, streamURL string) 
 	// Parse m3u8 to find a stream playlist URL first
 	playlistContent := string(body)
 	logrus.Debugf("M3U8 master playlist received")
-	
+
 	// Extract a stream playlist URL (not chunk URL yet)
 	streamPlaylistURL, err := g.extractStreamPlaylistURL(playlistContent)
 	if err != nil {
 		return fmt.Errorf("failed to extract stream playlist URL: %w", err)
 	}
-	
+
 	// Now get the actual stream playlist with chunks
 	chunkURL, err := g.getLastChunkFromPlaylist(ctx, streamPlaylistURL)
 	if err != nil {
@@ -377,7 +451,7 @@ func (g *GraphQLClient) SendWatchRequest(ctx context.Context, streamURL string) 
 // extractStreamPlaylistURL extracts a stream playlist URL from master playlist
 func (g *GraphQLClient) extractStreamPlaylistURL(masterPlaylist string) (string, error) {
 	lines := strings.Split(masterPlaylist, "\n")
-	
+
 	// Find any stream playlist URL (they end with .m3u8)
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
@@ -385,7 +459,7 @@ func (g *GraphQLClient) extractStreamPlaylistURL(masterPlaylist string) (string,
 			return line, nil
 		}
 	}
-	
+
 	return "", fmt.Errorf("no stream playlist URL found in master playlist")
 }
 
@@ -424,7 +498,7 @@ func (g *GraphQLClient) getLastChunkFromPlaylist(ctx context.Context, playlistUR
 func (g *GraphQLClient) extractLastChunk(playlist, baseURL string) (string, error) {
 	lines := strings.Split(playlist, "\n")
 	var lastChunkLine string
-	
+
 	// Find the last .ts file in the playlist (including query parameters)
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
@@ -433,11 +507,11 @@ func (g *GraphQLClient) extractLastChunk(playlist, baseURL string) (string, erro
 			lastChunkLine = line
 		}
 	}
-	
+
 	if lastChunkLine == "" {
 		return "", fmt.Errorf("no chunk found in playlist (looked for .ts URLs)")
 	}
-	
+
 	logrus.Debugf("Selected chunk URL: %s", lastChunkLine)
 	return lastChunkLine, nil
 }
@@ -497,7 +571,7 @@ func (g *GraphQLClient) parseCampaignsResponse(data interface{}) ([]Campaign, er
 
 		// Log if this is Diablo IV campaign by name or ID
 		if campaign.Game.Name == "Diablo IV" || campaign.Name == "Season 9 Launch Drops" {
-			logrus.Infof("Successfully parsed Diablo IV campaign: Name='%s' Game='%s' (ID: %s, Status: %s, Connected: %v)", 
+			logrus.Infof("Successfully parsed Diablo IV campaign: Name='%s' Game='%s' (ID: %s, Status: %s, Connected: %v)",
 				campaign.Name, campaign.Game.Name, campaign.ID, campaign.Status, campaign.Self.IsAccountConnected)
 		}
 
@@ -616,7 +690,7 @@ func (g *GraphQLClient) parseCampaignNode(node map[string]interface{}) (*Campaig
 	campaign.Name = getString(node, "name")
 	campaign.Description = getString(node, "description")
 	campaign.Status = getString(node, "status")
-	
+
 	// Debug: Log campaign details for Don't Starve Together
 	gameName := ""
 	if game, ok := node["game"].(map[string]interface{}); ok {
@@ -627,10 +701,10 @@ func (g *GraphQLClient) parseCampaignNode(node map[string]interface{}) (*Campaig
 		logrus.Debugf("Campaign ID: %s", campaign.ID)
 		logrus.Debugf("Campaign Name: %s", campaign.Name)
 		logrus.Debugf("Campaign Status: %s", campaign.Status)
-		
+
 		// Log all keys in the node
 		logrus.Debugf("Available keys in campaign node: %+v", getKeys(node))
-		
+
 		// Check if timeBasedDrops exists
 		if timeBasedDrops, exists := node["timeBasedDrops"]; exists {
 			logrus.Debugf("timeBasedDrops field exists: %+v", timeBasedDrops)
@@ -668,7 +742,7 @@ func (g *GraphQLClient) parseCampaignNode(node map[string]interface{}) (*Campaig
 						drop.Self.CurrentMinutesWatched = int(currentMinutes)
 					}
 					drop.Self.DropInstanceID = getString(self, "dropInstanceID")
-					
+
 					// Debug logging for Don't Starve Together
 					if gameName == "Don't Starve Together" {
 						logrus.Debugf("Drop '%s' self data: %+v", drop.Name, self)
@@ -690,29 +764,6 @@ func (g *GraphQLClient) parseCampaignNode(node map[string]interface{}) (*Campaig
 	}
 
 	return campaign, nil
-}
-
-// gameNameToSlug converts a game name to Twitch URL slug format
-func gameNameToSlug(gameName string) string {
-	// Convert to lowercase and replace spaces and special characters with hyphens
-	slug := strings.ToLower(gameName)
-	// Replace spaces with hyphens
-	slug = strings.ReplaceAll(slug, " ", "-")
-	// Replace other common characters
-	slug = strings.ReplaceAll(slug, "'", "")
-	slug = strings.ReplaceAll(slug, ":", "")
-	slug = strings.ReplaceAll(slug, ".", "")
-	slug = strings.ReplaceAll(slug, ",", "")
-	slug = strings.ReplaceAll(slug, "&", "")
-	slug = strings.ReplaceAll(slug, "(", "")
-	slug = strings.ReplaceAll(slug, ")", "")
-	// Remove multiple consecutive hyphens
-	for strings.Contains(slug, "--") {
-		slug = strings.ReplaceAll(slug, "--", "-")
-	}
-	// Remove leading/trailing hyphens
-	slug = strings.Trim(slug, "-")
-	return slug
 }
 
 // parseStreamsResponse parses the streams GraphQL response
@@ -763,8 +814,8 @@ func (g *GraphQLClient) parseStreamsResponse(data interface{}) ([]Stream, error)
 		}
 
 		stream := Stream{
-			ID:       getString(node, "id"),
-			Title:    getString(node, "title"),
+			ID:    getString(node, "id"),
+			Title: getString(node, "title"),
 		}
 
 		if broadcaster, ok := node["broadcaster"].(map[string]interface{}); ok {

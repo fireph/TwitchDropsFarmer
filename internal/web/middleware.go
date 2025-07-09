@@ -54,12 +54,12 @@ func LoggingMiddleware() gin.HandlerFunc {
 
 		// Log request
 		logrus.WithFields(logrus.Fields{
-			"status":     statusCode,
-			"latency":    latency,
-			"client_ip":  clientIP,
-			"method":     method,
-			"path":       path,
-			"body_size":  bodySize,
+			"status":    statusCode,
+			"latency":   latency,
+			"client_ip": clientIP,
+			"method":    method,
+			"path":      path,
+			"body_size": bodySize,
 		}).Info("HTTP Request")
 	}
 }

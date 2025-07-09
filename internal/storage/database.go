@@ -130,8 +130,8 @@ func (d *Database) migrate() error {
 func (d *Database) SaveUser(user *User) error {
 	query := `INSERT OR REPLACE INTO users (id, login, display_name, email, avatar, access_token, refresh_token, token_expiry, updated_at) 
 			  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-	
-	_, err := d.db.Exec(query, user.ID, user.Login, user.DisplayName, user.Email, user.Avatar, 
+
+	_, err := d.db.Exec(query, user.ID, user.Login, user.DisplayName, user.Email, user.Avatar,
 		user.AccessToken, user.RefreshToken, user.TokenExpiry, time.Now())
 	return err
 }
@@ -139,7 +139,7 @@ func (d *Database) SaveUser(user *User) error {
 func (d *Database) GetUser(userID string) (*User, error) {
 	query := `SELECT id, login, display_name, email, avatar, access_token, refresh_token, token_expiry 
 			  FROM users WHERE id = ?`
-	
+
 	var user User
 	err := d.db.QueryRow(query, userID).Scan(
 		&user.ID, &user.Login, &user.DisplayName, &user.Email, &user.Avatar,
@@ -148,7 +148,7 @@ func (d *Database) GetUser(userID string) (*User, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &user, nil
 }
 
@@ -156,7 +156,7 @@ func (d *Database) GetUser(userID string) (*User, error) {
 func (d *Database) SaveCampaign(campaign *Campaign) error {
 	query := `INSERT OR REPLACE INTO campaigns (id, name, description, game_id, game_name, status, starts_at, ends_at, account_link_url, is_account_connected, updated_at) 
 			  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-	
+
 	_, err := d.db.Exec(query, campaign.ID, campaign.Name, campaign.Description, campaign.GameID, campaign.GameName,
 		campaign.Status, campaign.StartsAt, campaign.EndsAt, campaign.AccountLinkURL, campaign.IsAccountConnected, time.Now())
 	return err
@@ -165,7 +165,7 @@ func (d *Database) SaveCampaign(campaign *Campaign) error {
 func (d *Database) GetActiveCampaigns() ([]Campaign, error) {
 	query := `SELECT id, name, description, game_id, game_name, status, starts_at, ends_at, account_link_url, is_account_connected 
 			  FROM campaigns WHERE status = 'ACTIVE' AND starts_at <= ? AND ends_at >= ?`
-	
+
 	now := time.Now()
 	rows, err := d.db.Query(query, now, now)
 	if err != nil {
@@ -191,7 +191,7 @@ func (d *Database) GetActiveCampaigns() ([]Campaign, error) {
 func (d *Database) SaveDrop(drop *Drop) error {
 	query := `INSERT OR REPLACE INTO drops (id, campaign_id, name, required_minutes, current_minutes, is_claimed, drop_instance_id, benefit_id, benefit_name, benefit_image_url, updated_at) 
 			  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-	
+
 	_, err := d.db.Exec(query, drop.ID, drop.CampaignID, drop.Name, drop.RequiredMinutes, drop.CurrentMinutes,
 		drop.IsClaimed, drop.DropInstanceID, drop.BenefitID, drop.BenefitName, drop.BenefitImageURL, time.Now())
 	return err
@@ -200,7 +200,7 @@ func (d *Database) SaveDrop(drop *Drop) error {
 func (d *Database) GetDropsForCampaign(campaignID string) ([]Drop, error) {
 	query := `SELECT id, campaign_id, name, required_minutes, current_minutes, is_claimed, drop_instance_id, benefit_id, benefit_name, benefit_image_url 
 			  FROM drops WHERE campaign_id = ?`
-	
+
 	rows, err := d.db.Query(query, campaignID)
 	if err != nil {
 		return nil, err
@@ -237,7 +237,7 @@ func (d *Database) MarkDropClaimed(dropID string) error {
 func (d *Database) SaveStream(stream *Stream) error {
 	query := `INSERT OR REPLACE INTO streams (id, user_id, user_login, user_name, game_id, game_name, title, viewer_count, started_at, language, thumbnail_url, updated_at) 
 			  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-	
+
 	_, err := d.db.Exec(query, stream.ID, stream.UserID, stream.UserLogin, stream.UserName, stream.GameID, stream.GameName,
 		stream.Title, stream.ViewerCount, stream.StartedAt, stream.Language, stream.ThumbnailURL, time.Now())
 	return err
@@ -246,7 +246,7 @@ func (d *Database) SaveStream(stream *Stream) error {
 func (d *Database) GetStreamsForGame(gameID string) ([]Stream, error) {
 	query := `SELECT id, user_id, user_login, user_name, game_id, game_name, title, viewer_count, started_at, language, thumbnail_url 
 			  FROM streams WHERE game_id = ? ORDER BY viewer_count DESC`
-	
+
 	rows, err := d.db.Query(query, gameID)
 	if err != nil {
 		return nil, err
@@ -290,14 +290,14 @@ func (d *Database) SetCurrentWatchingStream(streamID string) error {
 func (d *Database) GetCurrentWatchingStream() (*Stream, error) {
 	query := `SELECT id, user_id, user_login, user_name, game_id, game_name, title, viewer_count, started_at, language, thumbnail_url 
 			  FROM streams WHERE is_watching = TRUE LIMIT 1`
-	
+
 	var stream Stream
 	err := d.db.QueryRow(query).Scan(&stream.ID, &stream.UserID, &stream.UserLogin, &stream.UserName, &stream.GameID, &stream.GameName,
 		&stream.Title, &stream.ViewerCount, &stream.StartedAt, &stream.Language, &stream.ThumbnailURL)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &stream, nil
 }
 
@@ -305,12 +305,12 @@ func (d *Database) GetCurrentWatchingStream() (*Stream, error) {
 func (d *Database) StartMiningSession(userID, campaignID, streamID string) (int64, error) {
 	query := `INSERT INTO mining_sessions (user_id, campaign_id, stream_id, started_at, status) 
 			  VALUES (?, ?, ?, ?, 'active')`
-	
+
 	result, err := d.db.Exec(query, userID, campaignID, streamID, time.Now())
 	if err != nil {
 		return 0, err
 	}
-	
+
 	return result.LastInsertId()
 }
 
@@ -323,14 +323,14 @@ func (d *Database) EndMiningSession(sessionID int64, minutesWatched int) error {
 func (d *Database) GetActiveMiningSession(userID string) (*MiningSession, error) {
 	query := `SELECT id, user_id, campaign_id, stream_id, started_at, minutes_watched, status 
 			  FROM mining_sessions WHERE user_id = ? AND status = 'active' LIMIT 1`
-	
+
 	var session MiningSession
 	err := d.db.QueryRow(query, userID).Scan(&session.ID, &session.UserID, &session.CampaignID, &session.StreamID,
 		&session.StartedAt, &session.MinutesWatched, &session.Status)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &session, nil
 }
 

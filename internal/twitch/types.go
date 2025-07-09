@@ -37,19 +37,19 @@ type Stream struct {
 
 // Campaign represents a Twitch drop campaign
 type Campaign struct {
-	ID              string          `json:"id"`
-	Name            string          `json:"name"`
-	Description     string          `json:"description"`
-	Game            Game            `json:"game"`
-	Status          string          `json:"status"`
-	StartsAt        time.Time       `json:"starts_at"`
-	EndsAt          time.Time       `json:"ends_at"`
-	AccountLinkURL  string          `json:"account_link_url"`
-	Self            CampaignSelf    `json:"self"`
-	TimeBasedDrops  []TimeBased     `json:"time_based_drops"`
-	EventBasedDrops []EventBased    `json:"event_based_drops"`
-	Allow           []string        `json:"allow"`
-	Deny            []string        `json:"deny"`
+	ID              string       `json:"id"`
+	Name            string       `json:"name"`
+	Description     string       `json:"description"`
+	Game            Game         `json:"game"`
+	Status          string       `json:"status"`
+	StartsAt        time.Time    `json:"starts_at"`
+	EndsAt          time.Time    `json:"ends_at"`
+	AccountLinkURL  string       `json:"account_link_url"`
+	Self            CampaignSelf `json:"self"`
+	TimeBasedDrops  []TimeBased  `json:"time_based_drops"`
+	EventBasedDrops []EventBased `json:"event_based_drops"`
+	Allow           []string     `json:"allow"`
+	Deny            []string     `json:"deny"`
 }
 
 // CampaignSelf represents user's relationship to a campaign
@@ -59,17 +59,17 @@ type CampaignSelf struct {
 
 // TimeBased represents a time-based drop
 type TimeBased struct {
-	ID                string                `json:"id"`
-	Name              string                `json:"name"`
-	BenefitEdges      []BenefitEdge        `json:"benefit_edges"`
-	RequiredMinutesWatched int              `json:"required_minutes_watched"`
-	Self              TimeBasedSelf         `json:"self"`
+	ID                     string        `json:"id"`
+	Name                   string        `json:"name"`
+	BenefitEdges           []BenefitEdge `json:"benefit_edges"`
+	RequiredMinutesWatched int           `json:"required_minutes_watched"`
+	Self                   TimeBasedSelf `json:"self"`
 }
 
 // TimeBasedSelf represents user's progress on a time-based drop
 type TimeBasedSelf struct {
-	CurrentMinutesWatched int  `json:"current_minutes_watched"`
-	IsClaimed             bool `json:"is_claimed"`
+	CurrentMinutesWatched int    `json:"current_minutes_watched"`
+	IsClaimed             bool   `json:"is_claimed"`
 	DropInstanceID        string `json:"drop_instance_id"`
 }
 
@@ -111,7 +111,13 @@ type WatchingSession struct {
 // CurrentDropProgress represents current drop progress from TDM's CurrentDrop operation
 type CurrentDropProgress struct {
 	CurrentMinutesWatched int
-	DropID               string
+	DropID                string
+}
+
+// GameSlugInfo represents the response from SlugRedirect/DirectoryGameRedirect
+type GameSlugInfo struct {
+	ID   string
+	Slug string
 }
 
 // Inventory represents user's drop inventory
@@ -121,10 +127,10 @@ type Inventory struct {
 
 // GameEventDrop represents a claimed drop
 type GameEventDrop struct {
-	ID             string    `json:"id"`
-	Benefit        Benefit   `json:"benefit"`
-	LastUpdatedAt  time.Time `json:"last_updated_at"`
-	Self           DropSelf  `json:"self"`
+	ID            string    `json:"id"`
+	Benefit       Benefit   `json:"benefit"`
+	LastUpdatedAt time.Time `json:"last_updated_at"`
+	Self          DropSelf  `json:"self"`
 }
 
 // DropSelf represents user's relationship to a drop
@@ -134,8 +140,8 @@ type DropSelf struct {
 
 // GraphQLResponse represents a GraphQL response
 type GraphQLResponse struct {
-	Data   interface{}            `json:"data"`
-	Errors []GraphQLError         `json:"errors,omitempty"`
+	Data       interface{}            `json:"data"`
+	Errors     []GraphQLError         `json:"errors,omitempty"`
 	Extensions map[string]interface{} `json:"extensions,omitempty"`
 }
 
@@ -162,7 +168,6 @@ type TokenResponse struct {
 	TokenType    string   `json:"token_type"`
 }
 
-
 // ViewerHeartbeatPayload represents WebSocket heartbeat payload
 type ViewerHeartbeatPayload struct {
 	Data struct {
@@ -173,13 +178,13 @@ type ViewerHeartbeatPayload struct {
 
 // MinerStatus represents the current status of the drop miner
 type MinerStatus struct {
-	IsRunning        bool      `json:"is_running"`
-	CurrentStream    *Stream   `json:"current_stream"`
-	CurrentCampaign  *Campaign `json:"current_campaign"`
-	CurrentProgress  int       `json:"current_progress"`
-	TotalCampaigns   int       `json:"total_campaigns"`
-	ClaimedDrops     int       `json:"claimed_drops"`
-	LastUpdate       time.Time `json:"last_update"`
-	NextSwitch       time.Time `json:"next_switch"`
-	ErrorMessage     string    `json:"error_message"`
+	IsRunning       bool      `json:"is_running"`
+	CurrentStream   *Stream   `json:"current_stream"`
+	CurrentCampaign *Campaign `json:"current_campaign"`
+	CurrentProgress int       `json:"current_progress"`
+	TotalCampaigns  int       `json:"total_campaigns"`
+	ClaimedDrops    int       `json:"claimed_drops"`
+	LastUpdate      time.Time `json:"last_update"`
+	NextSwitch      time.Time `json:"next_switch"`
+	ErrorMessage    string    `json:"error_message"`
 }

@@ -18,34 +18,34 @@ type User struct {
 
 // Campaign represents a stored campaign
 type Campaign struct {
-	ID                  string    `json:"id"`
-	Name                string    `json:"name"`
-	Description         string    `json:"description"`
-	GameID              string    `json:"game_id"`
-	GameName            string    `json:"game_name"`
-	Status              string    `json:"status"`
-	StartsAt            time.Time `json:"starts_at"`
-	EndsAt              time.Time `json:"ends_at"`
-	AccountLinkURL      string    `json:"account_link_url"`
-	IsAccountConnected  bool      `json:"is_account_connected"`
-	CreatedAt           time.Time `json:"created_at"`
-	UpdatedAt           time.Time `json:"updated_at"`
+	ID                 string    `json:"id"`
+	Name               string    `json:"name"`
+	Description        string    `json:"description"`
+	GameID             string    `json:"game_id"`
+	GameName           string    `json:"game_name"`
+	Status             string    `json:"status"`
+	StartsAt           time.Time `json:"starts_at"`
+	EndsAt             time.Time `json:"ends_at"`
+	AccountLinkURL     string    `json:"account_link_url"`
+	IsAccountConnected bool      `json:"is_account_connected"`
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
 }
 
 // Drop represents a stored drop
 type Drop struct {
-	ID               string    `json:"id"`
-	CampaignID       string    `json:"campaign_id"`
-	Name             string    `json:"name"`
-	RequiredMinutes  int       `json:"required_minutes"`
-	CurrentMinutes   int       `json:"current_minutes"`
-	IsClaimed        bool      `json:"is_claimed"`
-	DropInstanceID   string    `json:"drop_instance_id"`
-	BenefitID        string    `json:"benefit_id"`
-	BenefitName      string    `json:"benefit_name"`
-	BenefitImageURL  string    `json:"benefit_image_url"`
-	CreatedAt        time.Time `json:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at"`
+	ID              string    `json:"id"`
+	CampaignID      string    `json:"campaign_id"`
+	Name            string    `json:"name"`
+	RequiredMinutes int       `json:"required_minutes"`
+	CurrentMinutes  int       `json:"current_minutes"`
+	IsClaimed       bool      `json:"is_claimed"`
+	DropInstanceID  string    `json:"drop_instance_id"`
+	BenefitID       string    `json:"benefit_id"`
+	BenefitName     string    `json:"benefit_name"`
+	BenefitImageURL string    `json:"benefit_image_url"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
 }
 
 // Stream represents a stored stream

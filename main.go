@@ -24,7 +24,7 @@ func main() {
 	logrus.SetFormatter(&logrus.TextFormatter{
 		FullTimestamp: true,
 	})
-	
+
 	logrus.Info("Twitch Drops Farmer - Using Android app authentication (like TDM)")
 
 	// Load configuration
@@ -48,16 +48,16 @@ func main() {
 
 	// Set miner configuration from loaded config
 	minerConfig := &drops.MinerConfig{
-		CheckInterval:     time.Duration(cfg.CheckInterval) * time.Second,
-		WatchInterval:     20 * time.Second, // Like TDM - every ~20 seconds
-		SwitchThreshold:   time.Duration(cfg.SwitchThreshold) * time.Minute,
-		MinimumPoints:     cfg.MinimumPoints,
-		MaximumStreams:    cfg.MaximumStreams,
-		PriorityGames:     cfg.PriorityGames,
-		ExcludeGames:      cfg.ExcludeGames,
-		WatchUnlisted:     cfg.WatchUnlisted,
-		ClaimDrops:        cfg.ClaimDrops,
-		WebhookURL:        cfg.WebhookURL,
+		CheckInterval:   time.Duration(cfg.CheckInterval) * time.Second,
+		WatchInterval:   20 * time.Second, // Like TDM - every ~20 seconds
+		SwitchThreshold: time.Duration(cfg.SwitchThreshold) * time.Minute,
+		MinimumPoints:   cfg.MinimumPoints,
+		MaximumStreams:  cfg.MaximumStreams,
+		PriorityGames:   cfg.PriorityGames,
+		ExcludeGames:    cfg.ExcludeGames,
+		WatchUnlisted:   cfg.WatchUnlisted,
+		ClaimDrops:      cfg.ClaimDrops,
+		WebhookURL:      cfg.WebhookURL,
 	}
 	miner.SetConfig(minerConfig)
 

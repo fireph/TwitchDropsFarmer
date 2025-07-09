@@ -20,16 +20,16 @@ type Server struct {
 	twitchClient *twitch.Client
 	miner        *drops.Miner
 	db           *storage.Database
-	
+
 	// WebSocket upgrader
 	upgrader websocket.Upgrader
-	
+
 	// WebSocket connections
 	wsConnections map[*websocket.Conn]bool
 	wsBroadcast   chan []byte
 	wsRegister    chan *websocket.Conn
 	wsUnregister  chan *websocket.Conn
-	
+
 	// Device code storage (in production use Redis/database)
 	deviceCodes map[string]*twitch.DeviceCodeResponse
 }
@@ -74,11 +74,11 @@ func (s *Server) Router() *gin.Engine {
 	router.Static("/static", "./web/static")
 	router.Static("/css", "./web/static/css")
 	router.Static("/js", "./web/static/js")
-	
+
 	// Serve HTML pages
 	router.StaticFile("/", "./web/static/html/index.html")
 	router.StaticFile("/login", "./web/static/html/login.html")
-	
+
 	// Handle favicon
 	router.StaticFile("/favicon.ico", "./web/static/favicon.ico")
 
@@ -124,6 +124,12 @@ func (s *Server) Router() *gin.Engine {
 		{
 			settings.GET("/", s.getSettings)
 			settings.PUT("/", s.updateSettings)
+		}
+
+		// Games endpoints
+		games := api.Group("/games")
+		{
+			games.POST("/add", s.addGameWithSlug)
 		}
 
 		// Streams endpoints

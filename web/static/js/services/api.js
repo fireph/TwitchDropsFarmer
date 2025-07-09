@@ -130,6 +130,14 @@ class API {
         return this.put('/api/settings/', settings);
     }
 
+    // Game management endpoints
+    async addGame(gameName, toPriority = true) {
+        return this.post('/api/games/add', {
+            game_name: gameName,
+            to_priority: toPriority
+        });
+    }
+
     // Stream endpoints
     async getStreamsForGame(gameId, limit = 10) {
         return this.get(`/api/streams/game/${gameId}?limit=${limit}`);

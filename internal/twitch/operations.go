@@ -47,19 +47,19 @@ func (op *GQLOperation) WithVariables(variables map[string]interface{}) *GQLOper
 		Extensions:    op.Extensions,
 		Variables:     make(map[string]interface{}),
 	}
-	
+
 	// Copy existing variables
 	if op.Variables != nil {
 		for k, v := range op.Variables {
 			newOp.Variables[k] = v
 		}
 	}
-	
+
 	// Merge new variables
 	for k, v := range variables {
 		newOp.Variables[k] = v
 	}
-	
+
 	return newOp
 }
 
@@ -78,7 +78,7 @@ var GQLOperations = map[string]*GQLOperation{
 			"channel": nil, // channel login - to be filled in
 		},
 	),
-	
+
 	// can be used to claim channel points
 	"ClaimCommunityPoints": NewGQLOperation(
 		"ClaimCommunityPoints",
@@ -90,7 +90,7 @@ var GQLOperations = map[string]*GQLOperation{
 			},
 		},
 	),
-	
+
 	// can be used to claim a drop
 	"ClaimDrop": NewGQLOperation(
 		"DropsPage_ClaimDropRewards",
@@ -101,7 +101,7 @@ var GQLOperations = map[string]*GQLOperation{
 			},
 		},
 	),
-	
+
 	// returns current state of points (balance, claim available) for a particular channel
 	"ChannelPointsContext": NewGQLOperation(
 		"ChannelPointsContext",
@@ -110,7 +110,7 @@ var GQLOperations = map[string]*GQLOperation{
 			"channelLogin": nil, // channel login - to be filled in
 		},
 	),
-	
+
 	// returns all in-progress campaigns
 	"Inventory": NewGQLOperation(
 		"Inventory",
@@ -119,7 +119,7 @@ var GQLOperations = map[string]*GQLOperation{
 			"fetchRewardCampaigns": false,
 		},
 	),
-	
+
 	// returns current state of drops (current drop progress)
 	"CurrentDrop": NewGQLOperation(
 		"DropCurrentSessionContext",
@@ -129,7 +129,7 @@ var GQLOperations = map[string]*GQLOperation{
 			"channelLogin": "",  // always empty string
 		},
 	),
-	
+
 	// returns all available campaigns
 	"Campaigns": NewGQLOperation(
 		"ViewerDropsDashboard",
@@ -138,7 +138,7 @@ var GQLOperations = map[string]*GQLOperation{
 			"fetchRewardCampaigns": false,
 		},
 	),
-	
+
 	// returns extended information about a particular campaign
 	"CampaignDetails": NewGQLOperation(
 		"DropCampaignDetails",
@@ -148,7 +148,7 @@ var GQLOperations = map[string]*GQLOperation{
 			"dropID":       nil, // campaign ID - to be filled in
 		},
 	),
-	
+
 	// returns drops available for a particular channel
 	"AvailableDrops": NewGQLOperation(
 		"DropsHighlightService_AvailableDrops",
@@ -157,7 +157,7 @@ var GQLOperations = map[string]*GQLOperation{
 			"channelID": nil, // channel ID as a str - to be filled in
 		},
 	),
-	
+
 	// returns stream playback access token
 	"PlaybackAccessToken": NewGQLOperation(
 		"PlaybackAccessToken",
@@ -171,15 +171,15 @@ var GQLOperations = map[string]*GQLOperation{
 			"vodID":      "",
 		},
 	),
-	
+
 	// returns live channels for a particular game
 	"GameDirectory": NewGQLOperation(
 		"DirectoryPage_Game",
 		"c7c9d5aad09155c4161d2382092dc44610367f3536aac39019ec2582ae5065f9",
 		map[string]interface{}{
-			"limit":      30, // limit of channels returned
-			"slug":       nil, // game slug - to be filled in
-			"imageWidth": 50,
+			"limit":       30,  // limit of channels returned
+			"slug":        nil, // game slug - to be filled in
+			"imageWidth":  50,
 			"includeIsDJ": false,
 			"options": map[string]interface{}{
 				"broadcasterLanguages":   []interface{}{},
@@ -194,7 +194,7 @@ var GQLOperations = map[string]*GQLOperation{
 			"sortTypeIsRecency": false,
 		},
 	),
-	
+
 	// can be used to turn game name -> game slug
 	"SlugRedirect": NewGQLOperation(
 		"DirectoryGameRedirect",
@@ -203,7 +203,7 @@ var GQLOperations = map[string]*GQLOperation{
 			"name": nil, // game name - to be filled in
 		},
 	),
-	
+
 	// unused, triggers notifications "update-summary"
 	"NotificationsView": NewGQLOperation(
 		"OnsiteNotifications_View",
@@ -212,20 +212,20 @@ var GQLOperations = map[string]*GQLOperation{
 			"input": map[string]interface{}{},
 		},
 	),
-	
+
 	// unused
 	"NotificationsList": NewGQLOperation(
 		"OnsiteNotifications_ListNotifications",
 		"11cdb54a2706c2c0b2969769907675680f02a6e77d8afe79a749180ad16bfea6",
 		map[string]interface{}{
-			"cursor":                   "",
-			"displayType":              "VIEWER",
-			"language":                 "en",
-			"limit":                    10,
-			"shouldLoadLastBroadcast":  false,
+			"cursor":                  "",
+			"displayType":             "VIEWER",
+			"language":                "en",
+			"limit":                   10,
+			"shouldLoadLastBroadcast": false,
 		},
 	),
-	
+
 	"NotificationsDelete": NewGQLOperation(
 		"OnsiteNotifications_DeleteNotification",
 		"13d463c831f28ffe17dccf55b3148ed8b3edbbd0ebadd56352f1ff0160616816",
@@ -243,10 +243,10 @@ func GetOperation(name string, variables map[string]interface{}) (*GQLOperation,
 	if !exists {
 		return nil, fmt.Errorf("operation %s not found", name)
 	}
-	
+
 	if variables == nil {
 		return baseOp, nil
 	}
-	
+
 	return baseOp.WithVariables(variables), nil
 }

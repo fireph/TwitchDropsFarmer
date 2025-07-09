@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"twitchdropsfarmer/internal/config"
 	"twitchdropsfarmer/internal/storage"
 	"twitchdropsfarmer/internal/twitch"
 
@@ -15,51 +16,51 @@ import (
 type Miner struct {
 	twitchClient *twitch.Client
 	db           *storage.Database
-	
+
 	// Mining state
-	mu           sync.RWMutex
-	isRunning    bool
+	mu              sync.RWMutex
+	isRunning       bool
 	currentCampaign *twitch.Campaign
 	currentStream   *twitch.Stream
 	currentSession  *storage.MiningSession
 	watchingSession *twitch.WatchingSession
-	
+
 	// Status tracking
-	status       *MinerStatus
-	statusMu     sync.RWMutex
-	
+	status   *MinerStatus
+	statusMu sync.RWMutex
+
 	// Configuration
-	config       *MinerConfig
-	
+	config *MinerConfig
+
 	// Channels for coordination
-	stopChan     chan struct{}
-	statusChan   chan *MinerStatus
+	stopChan   chan struct{}
+	statusChan chan *MinerStatus
 }
 
 type MinerConfig struct {
-	CheckInterval     time.Duration
-	WatchInterval     time.Duration // How often to send watch requests (like TDM ~20s)
-	SwitchThreshold   time.Duration
-	MinimumPoints     int
-	MaximumStreams    int
-	PriorityGames     []string
-	ExcludeGames      []string
-	WatchUnlisted     bool
-	ClaimDrops        bool
-	WebhookURL        string
+	CheckInterval   time.Duration
+	WatchInterval   time.Duration // How often to send watch requests (like TDM ~20s)
+	SwitchThreshold time.Duration
+	MinimumPoints   int
+	MaximumStreams  int
+	PriorityGames   []config.GameConfig
+	ExcludeGames    []config.GameConfig
+	WatchUnlisted   bool
+	ClaimDrops      bool
+	WebhookURL      string
 }
 
 type MinerStatus struct {
-	IsRunning        bool                `json:"is_running"`
-	CurrentStream    *twitch.Stream      `json:"current_stream"`
-	CurrentCampaign  *twitch.Campaign    `json:"current_campaign"`
-	CurrentProgress  int                 `json:"current_progress"`
-	TotalCampaigns   int                 `json:"total_campaigns"`
-	ClaimedDrops     int                 `json:"claimed_drops"`
-	LastUpdate       time.Time           `json:"last_update"`
-	NextSwitch       time.Time           `json:"next_switch"`
-	ErrorMessage     string              `json:"error_message"`
-	ActiveDrops      []ActiveDrop        `json:"active_drops"`
+	IsRunning       bool             `json:"is_running"`
+	CurrentStream   *twitch.Stream   `json:"current_stream"`
+	CurrentCampaign *twitch.Campaign `json:"current_campaign"`
+	CurrentProgress int              `json:"current_progress"`
+	TotalCampaigns  int              `json:"total_campaigns"`
+	ClaimedDrops    int              `json:"claimed_drops"`
+	LastUpdate      time.Time        `json:"last_update"`
+	NextSwitch      time.Time        `json:"next_switch"`
+	ErrorMessage    string           `json:"error_message"`
+	ActiveDrops     []ActiveDrop     `json:"active_drops"`
 }
 
 type ActiveDrop struct {
@@ -83,8 +84,8 @@ func NewMiner(twitchClient *twitch.Client, db *storage.Database) *Miner {
 			SwitchThreshold: 5 * time.Minute,
 			MinimumPoints:   50,
 			MaximumStreams:  3,
-			PriorityGames:   []string{},
-			ExcludeGames:    []string{},
+			PriorityGames:   []config.GameConfig{},
+			ExcludeGames:    []config.GameConfig{},
 			WatchUnlisted:   true,
 			ClaimDrops:      true,
 		},
@@ -108,7 +109,7 @@ func (m *Miner) Start(ctx context.Context) error {
 	m.mu.Unlock()
 
 	logrus.Info("Starting drop miner...")
-	
+
 	// Update status
 	m.updateStatus(func(s *MinerStatus) {
 		s.IsRunning = true
@@ -159,11 +160,11 @@ func (m *Miner) Start(ctx context.Context) error {
 func (m *Miner) Stop() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	if !m.isRunning {
 		return fmt.Errorf("miner is not running")
 	}
-	
+
 	close(m.stopChan)
 	return nil
 }
@@ -171,9 +172,9 @@ func (m *Miner) Stop() error {
 func (m *Miner) stop() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	m.isRunning = false
-	
+
 	// End current session if active
 	if m.currentSession != nil {
 		minutesWatched := int(time.Since(m.currentSession.StartedAt).Minutes())
@@ -182,7 +183,7 @@ func (m *Miner) stop() error {
 		}
 		m.currentSession = nil
 	}
-	
+
 	// Clear watching session
 	m.watchingSession = nil
 
@@ -193,7 +194,7 @@ func (m *Miner) stop() error {
 		s.CurrentStream = nil
 		s.CurrentCampaign = nil
 	})
-	
+
 	logrus.Info("Drop miner stopped")
 	return nil
 }
@@ -231,28 +232,28 @@ func (m *Miner) checkAndUpdate(ctx context.Context) error {
 		logrus.Info("No suitable campaign found")
 		return nil
 	}
-	
+
 	// Always try to get detailed campaign information for priority games since ViewerDropsDashboard doesn't include timeBasedDrops
 	if m.isGamePriority(bestCampaign.Game.Name) {
 		logrus.Debugf("Fetching detailed campaign info for priority game '%s' campaign '%s'", bestCampaign.Game.Name, bestCampaign.Name)
 		logrus.Debugf("Basic campaign has %d timeBasedDrops and %d eventBasedDrops", len(bestCampaign.TimeBasedDrops), len(bestCampaign.EventBasedDrops))
-		
+
 		detailedCampaign, err := m.twitchClient.GetCampaignDetails(ctx, bestCampaign.ID)
 		if err != nil {
 			logrus.Errorf("Failed to get detailed campaign info: %v", err)
 		} else {
-			logrus.Infof("SUCCESS: Detailed campaign '%s' has %d timeBasedDrops and %d eventBasedDrops", 
+			logrus.Infof("SUCCESS: Detailed campaign '%s' has %d timeBasedDrops and %d eventBasedDrops",
 				detailedCampaign.Name, len(detailedCampaign.TimeBasedDrops), len(detailedCampaign.EventBasedDrops))
-			
+
 			// Log details about the drops
 			for i, drop := range detailedCampaign.TimeBasedDrops {
-				logrus.Infof("Drop %d: %s - %d minutes required, %d minutes watched, claimed: %v", 
+				logrus.Infof("Drop %d: %s - %d minutes required, %d minutes watched, claimed: %v",
 					i+1, drop.Name, drop.RequiredMinutesWatched, drop.Self.CurrentMinutesWatched, drop.Self.IsClaimed)
 			}
-			
+
 			// Always replace with detailed campaign since it has proper drop data
 			bestCampaign = detailedCampaign
-			logrus.Infof("✅ UPDATED campaign with detailed drop information: %d timeBasedDrops, %d eventBasedDrops", 
+			logrus.Infof("✅ UPDATED campaign with detailed drop information: %d timeBasedDrops, %d eventBasedDrops",
 				len(bestCampaign.TimeBasedDrops), len(bestCampaign.EventBasedDrops))
 		}
 	}
@@ -288,7 +289,7 @@ func (m *Miner) selectBestCampaign(campaigns []twitch.Campaign) *twitch.Campaign
 	logrus.Debugf("Selecting from %d campaigns", len(campaigns))
 	logrus.Debugf("Priority games configured: %v", m.config.PriorityGames)
 	logrus.Debugf("Watch unlisted: %v", m.config.WatchUnlisted)
-	
+
 	// Debug: Count campaigns by game to see what's available
 	gameCount := make(map[string]int)
 	dropCount := make(map[string]int)
@@ -300,7 +301,7 @@ func (m *Miner) selectBestCampaign(campaigns []twitch.Campaign) *twitch.Campaign
 	logrus.Debugf("Available drops by game: %+v", dropCount)
 
 	for _, campaign := range campaigns {
-		logrus.Debugf("Evaluating campaign: %s (Game: %s, Status: %s, Connected: %v)", 
+		logrus.Debugf("Evaluating campaign: %s (Game: %s, Status: %s, Connected: %v)",
 			campaign.Name, campaign.Game.Name, campaign.Status, campaign.Self.IsAccountConnected)
 
 		// Skip expired campaigns first
@@ -334,7 +335,7 @@ func (m *Miner) selectBestCampaign(campaigns []twitch.Campaign) *twitch.Campaign
 	}
 
 	if bestCampaign != nil {
-		logrus.Infof("Selected campaign: %s (Game: %s, Score: %d)", 
+		logrus.Infof("Selected campaign: %s (Game: %s, Score: %d)",
 			bestCampaign.Name, bestCampaign.Game.Name, bestScore)
 	} else {
 		logrus.Info("No suitable campaign found")
@@ -407,7 +408,7 @@ func (m *Miner) shouldSwitchCampaign(newCampaign *twitch.Campaign) bool {
 	}
 
 	// Switch if we've been watching for the threshold time
-	if m.currentSession != nil && 
+	if m.currentSession != nil &&
 		time.Since(m.currentSession.StartedAt) > m.config.SwitchThreshold {
 		return true
 	}
@@ -427,7 +428,7 @@ func (m *Miner) switchToCampaign(ctx context.Context, campaign *twitch.Campaign)
 	}
 
 	// Find best stream for this campaign
-	streams, err := m.twitchClient.GetStreamsForGame(ctx, campaign.Game.Name, m.config.MaximumStreams)
+	streams, err := m.twitchClient.GetStreamsForGameName(ctx, campaign.Game.Name, m.config.MaximumStreams)
 	if err != nil {
 		return fmt.Errorf("failed to get streams for game: %w", err)
 	}
@@ -541,10 +542,10 @@ func (m *Miner) checkAndClaimDrops(ctx context.Context) error {
 	}
 
 	for _, drop := range campaign.TimeBasedDrops {
-		if !drop.Self.IsClaimed && 
+		if !drop.Self.IsClaimed &&
 			drop.Self.CurrentMinutesWatched >= drop.RequiredMinutesWatched &&
 			drop.Self.DropInstanceID != "" {
-			
+
 			logrus.Infof("Claiming drop: %s", drop.Name)
 			if err := m.twitchClient.ClaimDrop(ctx, drop.Self.DropInstanceID); err != nil {
 				logrus.Errorf("Failed to claim drop %s: %v", drop.Name, err)
@@ -579,7 +580,7 @@ func (m *Miner) updateMinerStatus(campaigns []twitch.Campaign) {
 	// Calculate active drops
 	var activeDrops []ActiveDrop
 	var claimedDrops int
-	
+
 	for _, campaign := range campaigns {
 		for _, drop := range campaign.TimeBasedDrops {
 			if drop.Self.IsClaimed {
@@ -590,12 +591,12 @@ func (m *Miner) updateMinerStatus(campaigns []twitch.Campaign) {
 				if currentCampaign != nil && campaign.ID == currentCampaign.ID && currentSessionMinutes > 0 {
 					currentMinutes += currentSessionMinutes
 				}
-				
+
 				// Ensure we don't exceed the required minutes
 				if currentMinutes > drop.RequiredMinutesWatched {
 					currentMinutes = drop.RequiredMinutesWatched
 				}
-				
+
 				progress := float64(currentMinutes) / float64(drop.RequiredMinutesWatched)
 				if progress > 1.0 {
 					progress = 1.0
@@ -657,9 +658,9 @@ func (m *Miner) updateMinerStatus(campaigns []twitch.Campaign) {
 func (m *Miner) updateStatus(updateFunc func(*MinerStatus)) {
 	m.statusMu.Lock()
 	defer m.statusMu.Unlock()
-	
+
 	updateFunc(m.status)
-	
+
 	// Send status update to channel (non-blocking)
 	select {
 	case m.statusChan <- m.status:
@@ -671,7 +672,7 @@ func (m *Miner) updateStatus(updateFunc func(*MinerStatus)) {
 func (m *Miner) GetStatus() *MinerStatus {
 	m.statusMu.RLock()
 	defer m.statusMu.RUnlock()
-	
+
 	// Return a copy to prevent external modification
 	statusCopy := *m.status
 	return &statusCopy
@@ -683,7 +684,7 @@ func (m *Miner) GetStatusChannel() <-chan *MinerStatus {
 
 func (m *Miner) isGamePriority(gameName string) bool {
 	for _, game := range m.config.PriorityGames {
-		if game == gameName {
+		if game.Name == gameName {
 			return true
 		}
 	}
@@ -692,7 +693,7 @@ func (m *Miner) isGamePriority(gameName string) bool {
 
 func (m *Miner) isGameExcluded(gameName string) bool {
 	for _, game := range m.config.ExcludeGames {
-		if game == gameName {
+		if game.Name == gameName {
 			return true
 		}
 	}

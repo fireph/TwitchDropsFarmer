@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"twitchdropsfarmer/internal/config"
 	"twitchdropsfarmer/internal/drops"
 	"twitchdropsfarmer/internal/twitch"
 
@@ -57,7 +58,7 @@ func (s *Server) handleAuthCallback(c *gin.Context) {
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
 		defer cancel()
-		
+
 		if err := s.twitchClient.PollForToken(ctx, req.DeviceCode, deviceResp.Interval); err != nil {
 			logrus.Errorf("Failed to poll for token: %v", err)
 		}
@@ -196,12 +197,12 @@ func (s *Server) getMinerStatus(c *gin.Context) {
 
 func (s *Server) getCurrentDrop(c *gin.Context) {
 	status := s.miner.GetStatus()
-	
+
 	if !status.IsRunning {
 		c.JSON(http.StatusOK, gin.H{
-			"is_running": false,
+			"is_running":   false,
 			"current_drop": nil,
-			"message": "Miner is not running",
+			"message":      "Miner is not running",
 		})
 		return
 	}
@@ -215,7 +216,7 @@ func (s *Server) getCurrentDrop(c *gin.Context) {
 				break
 			}
 		}
-		
+
 		// Use basic campaign data for now (no CampaignDetails call)
 		if currentDrop == nil && status.CurrentCampaign != nil {
 			if len(status.CurrentCampaign.TimeBasedDrops) > 0 {
@@ -240,12 +241,12 @@ func (s *Server) getCurrentDrop(c *gin.Context) {
 	}
 
 	response := gin.H{
-		"is_running": true,
+		"is_running":       true,
 		"current_campaign": status.CurrentCampaign,
-		"current_stream": status.CurrentStream,
-		"current_drop": currentDrop,
-		"last_update": status.LastUpdate,
-		"next_switch": status.NextSwitch,
+		"current_stream":   status.CurrentStream,
+		"current_drop":     currentDrop,
+		"last_update":      status.LastUpdate,
+		"next_switch":      status.NextSwitch,
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -254,14 +255,14 @@ func (s *Server) getCurrentDrop(c *gin.Context) {
 func (s *Server) getDropProgress(c *gin.Context) {
 	logrus.Infof("=== getDropProgress HANDLER CALLED ===")
 	status := s.miner.GetStatus()
-	
+
 	if !status.IsRunning {
 		c.JSON(http.StatusOK, gin.H{
-			"is_running": false,
+			"is_running":   false,
 			"active_drops": []drops.ActiveDrop{},
 			"total_progress": gin.H{
-				"claimed_drops": 0,
-				"total_drops": 0,
+				"claimed_drops":         0,
+				"total_drops":           0,
 				"completion_percentage": 0,
 			},
 		})
@@ -276,7 +277,7 @@ func (s *Server) getDropProgress(c *gin.Context) {
 	if status.CurrentCampaign != nil && status.CurrentStream != nil {
 		logrus.Infof("=== Using DropCurrentSessionContext for Real Progress ===")
 		logrus.Infof("Channel ID (UserID): %s, Stream ID: %s", status.CurrentStream.UserID, status.CurrentStream.ID)
-		
+
 		// Use DropCurrentSessionContext with correct parameters - use UserID as channelID
 		logrus.Infof("About to call GetCurrentDropProgress with channelID: %s", status.CurrentStream.UserID)
 		currentDropInfo, err := s.twitchClient.GetCurrentDropProgress(c.Request.Context(), status.CurrentStream.UserID)
@@ -285,11 +286,11 @@ func (s *Server) getDropProgress(c *gin.Context) {
 		} else {
 			logrus.Infof("GetCurrentDropProgress completed successfully - got real progress!")
 		}
-		
+
 		// Use ONLY DropCurrentSessionContext for real progress, infer other drops
 		sortedDrops := make([]twitch.TimeBased, len(status.CurrentCampaign.TimeBasedDrops))
 		copy(sortedDrops, status.CurrentCampaign.TimeBasedDrops)
-		
+
 		// Sort drops by required minutes (30, 90, 180)
 		for i := 0; i < len(sortedDrops)-1; i++ {
 			for j := i + 1; j < len(sortedDrops); j++ {
@@ -298,13 +299,13 @@ func (s *Server) getDropProgress(c *gin.Context) {
 				}
 			}
 		}
-		
+
 		logrus.Infof("🔄 Processing drops in order by required minutes...")
-		
+
 		for i, drop := range sortedDrops {
 			currentMinutes := 0
 			isClaimed := false
-			
+
 			if currentDropInfo != nil && currentDropInfo.DropID == drop.ID {
 				// This is the currently active drop - use real progress
 				currentMinutes = currentDropInfo.CurrentMinutesWatched
@@ -332,7 +333,7 @@ func (s *Server) getDropProgress(c *gin.Context) {
 					}
 				}
 			}
-			
+
 			activeDrop := drops.ActiveDrop{
 				ID:              drop.ID,
 				Name:            drop.Name,
@@ -354,18 +355,18 @@ func (s *Server) getDropProgress(c *gin.Context) {
 			claimedDrops++
 		}
 	}
-	
+
 	completionPercentage := 0.0
 	if totalDrops > 0 {
 		completionPercentage = (float64(claimedDrops) / float64(totalDrops)) * 100
 	}
 
 	response := gin.H{
-		"is_running": true,
+		"is_running":   true,
 		"active_drops": activeDrops,
 		"total_progress": gin.H{
-			"claimed_drops": claimedDrops,
-			"total_drops": totalDrops,
+			"claimed_drops":         claimedDrops,
+			"total_drops":           totalDrops,
 			"completion_percentage": completionPercentage,
 		},
 		"last_update": status.LastUpdate,
@@ -425,20 +426,46 @@ func (s *Server) updateSettings(c *gin.Context) {
 
 	// Update configuration
 	if priorityGames, ok := updates["priority_games"].([]interface{}); ok {
-		var games []string
+		var games []config.GameConfig
 		for _, game := range priorityGames {
-			if gameStr, ok := game.(string); ok {
-				games = append(games, gameStr)
+			if gameMap, ok := game.(map[string]interface{}); ok {
+				gameConfig := config.GameConfig{
+					Name: getString(gameMap, "name"),
+					Slug: getString(gameMap, "slug"),
+					ID:   getString(gameMap, "id"),
+				}
+				games = append(games, gameConfig)
+			} else if gameStr, ok := game.(string); ok {
+				// Handle legacy string format - convert to GameConfig
+				gameConfig := config.GameConfig{
+					Name: gameStr,
+					Slug: "", // Will be populated when used
+					ID:   "", // Will be populated when used
+				}
+				games = append(games, gameConfig)
 			}
 		}
 		s.config.PriorityGames = games
 	}
 
 	if excludeGames, ok := updates["exclude_games"].([]interface{}); ok {
-		var games []string
+		var games []config.GameConfig
 		for _, game := range excludeGames {
-			if gameStr, ok := game.(string); ok {
-				games = append(games, gameStr)
+			if gameMap, ok := game.(map[string]interface{}); ok {
+				gameConfig := config.GameConfig{
+					Name: getString(gameMap, "name"),
+					Slug: getString(gameMap, "slug"),
+					ID:   getString(gameMap, "id"),
+				}
+				games = append(games, gameConfig)
+			} else if gameStr, ok := game.(string); ok {
+				// Handle legacy string format - convert to GameConfig
+				gameConfig := config.GameConfig{
+					Name: gameStr,
+					Slug: "", // Will be populated when used
+					ID:   "", // Will be populated when used
+				}
+				games = append(games, gameConfig)
 			}
 		}
 		s.config.ExcludeGames = games
@@ -490,15 +517,15 @@ func (s *Server) updateSettings(c *gin.Context) {
 
 	// Update miner configuration
 	minerConfig := &drops.MinerConfig{
-		CheckInterval:     time.Duration(s.config.CheckInterval) * time.Second,
-		SwitchThreshold:   time.Duration(s.config.SwitchThreshold) * time.Minute,
-		MinimumPoints:     s.config.MinimumPoints,
-		MaximumStreams:    s.config.MaximumStreams,
-		PriorityGames:     s.config.PriorityGames,
-		ExcludeGames:      s.config.ExcludeGames,
-		WatchUnlisted:     s.config.WatchUnlisted,
-		ClaimDrops:        s.config.ClaimDrops,
-		WebhookURL:        s.config.WebhookURL,
+		CheckInterval:   time.Duration(s.config.CheckInterval) * time.Second,
+		SwitchThreshold: time.Duration(s.config.SwitchThreshold) * time.Minute,
+		MinimumPoints:   s.config.MinimumPoints,
+		MaximumStreams:  s.config.MaximumStreams,
+		PriorityGames:   s.config.PriorityGames,
+		ExcludeGames:    s.config.ExcludeGames,
+		WatchUnlisted:   s.config.WatchUnlisted,
+		ClaimDrops:      s.config.ClaimDrops,
+		WebhookURL:      s.config.WebhookURL,
 	}
 	s.miner.SetConfig(minerConfig)
 
@@ -510,6 +537,52 @@ func (s *Server) updateSettings(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+// Game management handlers
+func (s *Server) addGameWithSlug(c *gin.Context) {
+	if !s.twitchClient.IsLoggedIn() {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not logged in"})
+		return
+	}
+
+	var req struct {
+		GameName   string `json:"game_name" binding:"required"`
+		ToPriority bool   `json:"to_priority"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request", "details": err.Error()})
+		return
+	}
+
+	// Get the slug and ID from Twitch
+	slugInfo, err := s.twitchClient.GetGameSlug(c.Request.Context(), req.GameName)
+	if err != nil {
+		logrus.Errorf("Failed to get slug for game '%s': %v", req.GameName, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to resolve game slug"})
+		return
+	}
+
+	// Add the game to config with the resolved slug and ID
+	logrus.Infof("Adding game '%s' with slug '%s' and ID '%s' to config (priority: %v)", req.GameName, slugInfo.Slug, slugInfo.ID, req.ToPriority)
+	err = s.config.AddGameToConfig(req.GameName, slugInfo.Slug, slugInfo.ID, req.ToPriority)
+	if err != nil {
+		logrus.Errorf("Failed to add game to config: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add game to config"})
+		return
+	}
+	
+	logrus.Infof("Successfully added game '%s' with slug '%s' and ID '%s' to config", req.GameName, slugInfo.Slug, slugInfo.ID)
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"game": config.GameConfig{
+			Name: req.GameName,
+			Slug: slugInfo.Slug,
+			ID:   slugInfo.ID,
+		},
+	})
 }
 
 // Stream handlers
@@ -531,7 +604,7 @@ func (s *Server) getStreamsForGame(c *gin.Context) {
 		limit = 10
 	}
 
-	streams, err := s.twitchClient.GetStreamsForGame(c.Request.Context(), gameID, limit)
+	streams, err := s.twitchClient.GetStreamsForGameName(c.Request.Context(), gameID, limit)
 	if err != nil {
 		logrus.Errorf("Failed to get streams for game: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get streams"})
@@ -554,7 +627,7 @@ func (s *Server) getCurrentStream(c *gin.Context) {
 // Device code storage methods (in production, use Redis or database)
 func (s *Server) storeDeviceCode(deviceCode string, response *twitch.DeviceCodeResponse) {
 	s.deviceCodes[deviceCode] = response
-	
+
 	// Clean up expired codes after their expiry time
 	go func() {
 		time.Sleep(time.Duration(response.ExpiresIn) * time.Second)
@@ -564,4 +637,12 @@ func (s *Server) storeDeviceCode(deviceCode string, response *twitch.DeviceCodeR
 
 func (s *Server) getDeviceCode(deviceCode string) *twitch.DeviceCodeResponse {
 	return s.deviceCodes[deviceCode]
+}
+
+// Helper function for safe string extraction
+func getString(m map[string]interface{}, key string) string {
+	if val, ok := m[key].(string); ok {
+		return val
+	}
+	return ""
 }
