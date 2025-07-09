@@ -369,7 +369,9 @@ func (m *Miner) calculateCampaignScore(campaign *twitch.Campaign) int {
 		score += 10
 		logrus.Debugf("Added 10 points for unlisted game '%s' (watch_unlisted=true)", campaign.Game.Name)
 	} else {
-		logrus.Debugf("No points for game '%s' (not priority and watch_unlisted=false)", campaign.Game.Name)
+		// If WatchUnlisted is false and game is not priority, return 0 immediately
+		logrus.Debugf("Skipping game '%s' (not priority and watch_unlisted=false)", campaign.Game.Name)
+		return 0
 	}
 
 	// Account connected campaigns get bonus
