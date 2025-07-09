@@ -7,7 +7,6 @@ import (
 
 	"twitchdropsfarmer/internal/config"
 	"twitchdropsfarmer/internal/drops"
-	"twitchdropsfarmer/internal/storage"
 	"twitchdropsfarmer/internal/twitch"
 
 	"github.com/gin-gonic/gin"
@@ -19,7 +18,6 @@ type Server struct {
 	config       *config.Config
 	twitchClient *twitch.Client
 	miner        *drops.Miner
-	db           *storage.Database
 
 	// WebSocket upgrader
 	upgrader websocket.Upgrader
@@ -34,12 +32,11 @@ type Server struct {
 	deviceCodes map[string]*twitch.DeviceCodeResponse
 }
 
-func NewServer(cfg *config.Config, twitchClient *twitch.Client, miner *drops.Miner, db *storage.Database) *Server {
+func NewServer(cfg *config.Config, twitchClient *twitch.Client, miner *drops.Miner) *Server {
 	server := &Server{
 		config:       cfg,
 		twitchClient: twitchClient,
 		miner:        miner,
-		db:           db,
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				return true // Allow all origins for now

@@ -11,7 +11,6 @@ import (
 
 	"twitchdropsfarmer/internal/config"
 	"twitchdropsfarmer/internal/drops"
-	"twitchdropsfarmer/internal/storage"
 	"twitchdropsfarmer/internal/twitch"
 	"twitchdropsfarmer/internal/web"
 
@@ -33,18 +32,11 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	// Initialize storage
-	db, err := storage.NewDatabase(cfg.DatabasePath)
-	if err != nil {
-		log.Fatalf("Failed to initialize database: %v", err)
-	}
-	defer db.Close()
-
 	// Initialize Twitch client
 	twitchClient := twitch.NewClient(cfg.TwitchClientID, cfg.TwitchClientSecret)
 
 	// Initialize drop miner
-	miner := drops.NewMiner(twitchClient, db)
+	miner := drops.NewMiner(twitchClient)
 
 	// Set miner configuration from loaded config
 	minerConfig := &drops.MinerConfig{
@@ -62,7 +54,7 @@ func main() {
 	miner.SetConfig(minerConfig)
 
 	// Initialize web server
-	webServer := web.NewServer(cfg, twitchClient, miner, db)
+	webServer := web.NewServer(cfg, twitchClient, miner)
 
 	// Start web server
 	server := &http.Server{

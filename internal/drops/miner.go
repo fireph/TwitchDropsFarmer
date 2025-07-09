@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"twitchdropsfarmer/internal/config"
-	"twitchdropsfarmer/internal/storage"
 	"twitchdropsfarmer/internal/twitch"
 
 	"github.com/sirupsen/logrus"
@@ -15,14 +14,13 @@ import (
 
 type Miner struct {
 	twitchClient *twitch.Client
-	db           *storage.Database
 
 	// Mining state
 	mu              sync.RWMutex
 	isRunning       bool
 	currentCampaign *twitch.Campaign
 	currentStream   *twitch.Stream
-	currentSession  *storage.MiningSession
+	currentSession  *MiningSession
 	watchingSession *twitch.WatchingSession
 
 	// Status tracking
@@ -75,10 +73,18 @@ type ActiveDrop struct {
 	EstimatedTime   time.Time `json:"estimated_time"`
 }
 
-func NewMiner(twitchClient *twitch.Client, db *storage.Database) *Miner {
+type MiningSession struct {
+	ID         string    `json:"id"`
+	UserID     string    `json:"user_id"`
+	CampaignID string    `json:"campaign_id"`
+	StreamID   string    `json:"stream_id"`
+	StartedAt  time.Time `json:"started_at"`
+	Status     string    `json:"status"`
+}
+
+func NewMiner(twitchClient *twitch.Client) *Miner {
 	return &Miner{
 		twitchClient: twitchClient,
-		db:           db,
 		config: &MinerConfig{
 			CheckInterval:   60 * time.Second,
 			WatchInterval:   20 * time.Second, // Like TDM - every ~20 seconds
@@ -189,9 +195,7 @@ func (m *Miner) stop() error {
 	// End current session if active
 	if m.currentSession != nil {
 		minutesWatched := int(time.Since(m.currentSession.StartedAt).Minutes())
-		if err := m.db.EndMiningSession(m.currentSession.ID, minutesWatched); err != nil {
-			logrus.Errorf("Failed to end mining session: %v", err)
-		}
+		logrus.Debugf("Ending mining session: %s, watched %d minutes", m.currentSession.ID, minutesWatched)
 		m.currentSession = nil
 	}
 
@@ -435,9 +439,7 @@ func (m *Miner) switchToCampaign(ctx context.Context, campaign *twitch.Campaign)
 	// End current session
 	if m.currentSession != nil {
 		minutesWatched := int(time.Since(m.currentSession.StartedAt).Minutes())
-		if err := m.db.EndMiningSession(m.currentSession.ID, minutesWatched); err != nil {
-			logrus.Errorf("Failed to end current session: %v", err)
-		}
+		logrus.Debugf("Ending current session: %s, watched %d minutes", m.currentSession.ID, minutesWatched)
 	}
 
 	// Find best stream for this campaign
@@ -462,10 +464,7 @@ func (m *Miner) switchToCampaign(ctx context.Context, campaign *twitch.Campaign)
 		return fmt.Errorf("user not available")
 	}
 
-	sessionID, err := m.db.StartMiningSession(user.ID, campaign.ID, bestStream.ID)
-	if err != nil {
-		return fmt.Errorf("failed to start mining session: %w", err)
-	}
+	sessionID := fmt.Sprintf("session_%d", time.Now().Unix())
 
 	// Start watching session like TDM
 	watchingSession, err := m.twitchClient.StartWatching(ctx, bestStream.UserLogin)
@@ -477,7 +476,7 @@ func (m *Miner) switchToCampaign(ctx context.Context, campaign *twitch.Campaign)
 	m.mu.Lock()
 	m.currentCampaign = campaign
 	m.currentStream = bestStream
-	m.currentSession = &storage.MiningSession{
+	m.currentSession = &MiningSession{
 		ID:         sessionID,
 		UserID:     user.ID,
 		CampaignID: campaign.ID,
@@ -487,11 +486,6 @@ func (m *Miner) switchToCampaign(ctx context.Context, campaign *twitch.Campaign)
 	}
 	m.watchingSession = watchingSession
 	m.mu.Unlock()
-
-	// Save to database
-	if err := m.db.SetCurrentWatchingStream(bestStream.ID); err != nil {
-		logrus.Errorf("Failed to save current watching stream: %v", err)
-	}
 
 	logrus.Infof("Now watching: %s playing %s", bestStream.UserName, bestStream.GameName)
 	return nil
@@ -526,21 +520,7 @@ func (m *Miner) updateDropProgress(ctx context.Context) error {
 
 	// Calculate minutes watched in current session
 	minutesWatched := int(time.Since(session.StartedAt).Minutes())
-
-	// Update progress for time-based drops
-	for _, drop := range campaign.TimeBasedDrops {
-		if !drop.Self.IsClaimed {
-			newProgress := drop.Self.CurrentMinutesWatched + minutesWatched
-			if newProgress > drop.RequiredMinutesWatched {
-				newProgress = drop.RequiredMinutesWatched
-			}
-
-			// Update in database
-			if err := m.db.UpdateDropProgress(drop.ID, newProgress); err != nil {
-				logrus.Errorf("Failed to update drop progress: %v", err)
-			}
-		}
-	}
+	logrus.Debugf("Current session progress: %d minutes watched", minutesWatched)
 
 	return nil
 }
@@ -563,11 +543,6 @@ func (m *Miner) checkAndClaimDrops(ctx context.Context) error {
 			if err := m.twitchClient.ClaimDrop(ctx, drop.Self.DropInstanceID); err != nil {
 				logrus.Errorf("Failed to claim drop %s: %v", drop.Name, err)
 				continue
-			}
-
-			// Mark as claimed in database
-			if err := m.db.MarkDropClaimed(drop.ID); err != nil {
-				logrus.Errorf("Failed to mark drop as claimed: %v", err)
 			}
 
 			logrus.Infof("Successfully claimed drop: %s", drop.Name)

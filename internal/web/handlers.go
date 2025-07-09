@@ -179,11 +179,15 @@ func (s *Server) getCampaignDrops(c *gin.Context) {
 		return
 	}
 
-	drops, err := s.db.GetDropsForCampaign(campaignID)
-	if err != nil {
-		logrus.Errorf("Failed to get drops for campaign: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get drops"})
-		return
+	// Get drops from current miner status
+	status := s.miner.GetStatus()
+	var drops []drops.ActiveDrop
+	
+	// Find drops for the requested campaign
+	for _, drop := range status.ActiveDrops {
+		if status.CurrentCampaign != nil && status.CurrentCampaign.ID == campaignID {
+			drops = append(drops, drop)
+		}
 	}
 
 	c.JSON(http.StatusOK, drops)
@@ -629,13 +633,13 @@ func (s *Server) getStreamsForGame(c *gin.Context) {
 }
 
 func (s *Server) getCurrentStream(c *gin.Context) {
-	stream, err := s.db.GetCurrentWatchingStream()
-	if err != nil {
+	status := s.miner.GetStatus()
+	if status.CurrentStream == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "No current stream"})
 		return
 	}
 
-	c.JSON(http.StatusOK, stream)
+	c.JSON(http.StatusOK, status.CurrentStream)
 }
 
 // Device code storage methods (in production, use Redis or database)
