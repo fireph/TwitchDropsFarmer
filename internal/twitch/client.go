@@ -29,8 +29,7 @@ type Client struct {
 	deviceID  string
 
 	// Client configuration
-	clientID     string
-	clientSecret string
+	clientID string
 }
 
 // generateNonce generates a random hex string of specified length
@@ -40,13 +39,12 @@ func generateNonce(length int) string {
 	return hex.EncodeToString(bytes)
 }
 
-func NewClient(clientID, clientSecret string) *Client {
+func NewClient(clientID string) *Client {
 	client := &Client{
-		authManager:  NewAuthManager(clientID, clientSecret),
-		clientID:     clientID,
-		clientSecret: clientSecret,
-		sessionID:    generateNonce(16), // 16 char hex string like TDM
-		deviceID:     generateNonce(32), // 32 char hex string like TDM
+		authManager: NewAuthManager(clientID),
+		clientID:    clientID,
+		sessionID:   generateNonce(16), // 16 char hex string like TDM
+		deviceID:    generateNonce(32), // 32 char hex string like TDM
 	}
 
 	// Try to load existing token

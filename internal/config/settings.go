@@ -24,8 +24,7 @@ type Config struct {
 	DatabasePath  string `json:"database_path"`
 
 	// Twitch API configuration
-	TwitchClientID     string `json:"twitch_client_id"`
-	TwitchClientSecret string `json:"twitch_client_secret"`
+	TwitchClientID string `json:"twitch_client_id"`
 
 	// Drop mining configuration
 	PriorityGames   []GameConfig `json:"priority_games"`
@@ -50,23 +49,22 @@ func Load() (*Config, error) {
 	_ = godotenv.Load()
 
 	cfg := &Config{
-		ServerAddress:      getEnv("SERVER_ADDRESS", ":8080"),
-		DatabasePath:       getEnv("DATABASE_PATH", filepath.Join(".", "config", "drops.db")),
-		TwitchClientID:     getEnv("TWITCH_CLIENT_ID", "kd1unb4b3q4t58fwlpcbzcbnm76a8fp"), // Twitch Android App ID (like TDM)
-		TwitchClientSecret: getEnv("TWITCH_CLIENT_SECRET", ""),                            // Not needed for device flow
-		PriorityGames:      []GameConfig{},
-		ExcludeGames:       []GameConfig{},
-		WatchUnlisted:      true,
-		ClaimDrops:         true,
-		WebhookURL:         getEnv("WEBHOOK_URL", ""),
-		CheckInterval:      60,
-		SwitchThreshold:    5,
-		MinimumPoints:      50,
-		MaximumStreams:     3,
-		Theme:              "dark",
-		Language:           "en",
-		ShowTray:           true,
-		StartMinimized:     false,
+		ServerAddress:   getEnv("SERVER_ADDRESS", ":8080"),
+		DatabasePath:    getEnv("DATABASE_PATH", filepath.Join(".", "config", "drops.db")),
+		TwitchClientID:  getEnv("TWITCH_CLIENT_ID", "kd1unb4b3q4t58fwlpcbzcbnm76a8fp"), // Twitch Android App ID (like TDM)
+		PriorityGames:   []GameConfig{},
+		ExcludeGames:    []GameConfig{},
+		WatchUnlisted:   true,
+		ClaimDrops:      true,
+		WebhookURL:      getEnv("WEBHOOK_URL", ""),
+		CheckInterval:   60,
+		SwitchThreshold: 5,
+		MinimumPoints:   50,
+		MaximumStreams:  3,
+		Theme:           "dark",
+		Language:        "en",
+		ShowTray:        true,
+		StartMinimized:  false,
 	}
 
 	// Load configuration from file if it exists

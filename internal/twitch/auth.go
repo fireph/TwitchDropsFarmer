@@ -27,9 +27,8 @@ var (
 )
 
 type AuthManager struct {
-	clientID     string
-	clientSecret string
-	httpClient   *http.Client
+	clientID   string
+	httpClient *http.Client
 }
 
 type DeviceCodeResponse struct {
@@ -50,11 +49,10 @@ type DeviceTokenPollResponse struct {
 	ErrorDescription string `json:"error_description"`
 }
 
-func NewAuthManager(clientID, clientSecret string) *AuthManager {
+func NewAuthManager(clientID string) *AuthManager {
 	return &AuthManager{
-		clientID:     clientID,
-		clientSecret: clientSecret,
-		httpClient:   &http.Client{Timeout: 30 * time.Second},
+		clientID:   clientID,
+		httpClient: &http.Client{Timeout: 30 * time.Second},
 	}
 }
 

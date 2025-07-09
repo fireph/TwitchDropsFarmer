@@ -33,7 +33,7 @@ func main() {
 	}
 
 	// Initialize Twitch client
-	twitchClient := twitch.NewClient(cfg.TwitchClientID, cfg.TwitchClientSecret)
+	twitchClient := twitch.NewClient(cfg.TwitchClientID)
 
 	// Initialize drop miner
 	miner := drops.NewMiner(twitchClient)
