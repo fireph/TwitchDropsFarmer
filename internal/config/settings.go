@@ -214,7 +214,7 @@ func (c *Config) AddGameToConfig(gameName string, gameSlug string, gameID string
 		logrus.Infof("Added new exclude game '%s' with slug '%s' and ID '%s'", gameName, gameSlug, gameID)
 	}
 
-	logrus.Infof("About to save config with %d priority games and %d exclude games", 
+	logrus.Infof("About to save config with %d priority games and %d exclude games",
 		len(c.PriorityGames), len(c.ExcludeGames))
 	return c.Save()
 }

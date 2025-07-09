@@ -35,6 +35,7 @@ type Miner struct {
 	// Channels for coordination
 	stopChan   chan struct{}
 	statusChan chan *MinerStatus
+	configChan chan struct{}
 }
 
 type MinerConfig struct {
@@ -96,6 +97,7 @@ func NewMiner(twitchClient *twitch.Client, db *storage.Database) *Miner {
 		},
 		stopChan:   make(chan struct{}),
 		statusChan: make(chan *MinerStatus, 100),
+		configChan: make(chan struct{}, 1), // Buffered channel to avoid blocking
 	}
 }
 
@@ -146,6 +148,15 @@ func (m *Miner) Start(ctx context.Context) error {
 				logrus.Errorf("Mining check failed: %v", err)
 				m.updateStatus(func(s *MinerStatus) {
 					s.ErrorMessage = fmt.Sprintf("Mining check failed: %v", err)
+				})
+			}
+		case <-m.configChan:
+			// Configuration changed, trigger immediate re-evaluation
+			logrus.Info("Configuration updated, re-evaluating campaigns...")
+			if err := m.checkAndUpdate(ctx); err != nil {
+				logrus.Errorf("Config-triggered mining check failed: %v", err)
+				m.updateStatus(func(s *MinerStatus) {
+					s.ErrorMessage = fmt.Sprintf("Config-triggered mining check failed: %v", err)
 				})
 			}
 		case <-watchTicker.C:
@@ -710,6 +721,16 @@ func (m *Miner) SetConfig(config *MinerConfig) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.config = config
+
+	// Trigger immediate re-evaluation if miner is running
+	if m.isRunning {
+		select {
+		case m.configChan <- struct{}{}:
+			// Successfully sent notification
+		default:
+			// Channel is already full, no need to send another notification
+		}
+	}
 }
 
 func (m *Miner) sendWatchRequest(ctx context.Context) error {

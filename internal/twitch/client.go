@@ -198,7 +198,6 @@ func (c *Client) getAccessToken(ctx context.Context) (string, error) {
 	return c.token.AccessToken, nil
 }
 
-
 // Utility methods
 func (c *Client) GetClientID() string {
 	return c.clientID

@@ -572,8 +572,22 @@ func (s *Server) addGameWithSlug(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add game to config"})
 		return
 	}
-	
+
 	logrus.Infof("Successfully added game '%s' with slug '%s' and ID '%s' to config", req.GameName, slugInfo.Slug, slugInfo.ID)
+
+	// Update miner configuration with the new game list
+	minerConfig := &drops.MinerConfig{
+		CheckInterval:   time.Duration(s.config.CheckInterval) * time.Second,
+		SwitchThreshold: time.Duration(s.config.SwitchThreshold) * time.Minute,
+		MinimumPoints:   s.config.MinimumPoints,
+		MaximumStreams:  s.config.MaximumStreams,
+		PriorityGames:   s.config.PriorityGames,
+		ExcludeGames:    s.config.ExcludeGames,
+		WatchUnlisted:   s.config.WatchUnlisted,
+		ClaimDrops:      s.config.ClaimDrops,
+		WebhookURL:      s.config.WebhookURL,
+	}
+	s.miner.SetConfig(minerConfig)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
