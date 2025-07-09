@@ -14,7 +14,7 @@ class Dashboard {
             // Set up periodic refresh for real-time progress updates
             this.refreshInterval = setInterval(() => {
                 this.loadMinerStatus();
-            }, 5000); // Refresh every 5 seconds for real-time progress
+            }, 30000); // Refresh every 30 seconds
         } catch (error) {
             console.error('Failed to initialize dashboard:', error);
         }
