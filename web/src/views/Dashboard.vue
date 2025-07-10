@@ -208,7 +208,7 @@ async function stopMiner() {
 }
 
 onMounted(async () => {
-  // Initialize WebSocket connection
+  // Initialize WebSocket connection - this will now provide real-time progress updates
   webSocketService.connect()
   
   // Fetch initial data

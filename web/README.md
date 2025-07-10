@@ -7,7 +7,7 @@ This is the modern Vue.js frontend for the Twitch Drops Farmer application.
 - **Vue.js 3.5** - Progressive JavaScript framework
 - **TypeScript 5.7** - Type-safe JavaScript
 - **Vite 6.0** - Fast build tool and development server
-- **TailwindCSS v4 (alpha)** - Utility-first CSS framework
+- **TailwindCSS v4** - Utility-first CSS framework with CSS-based configuration
 - **Vue Router 4.4** - Client-side routing
 - **Pinia 2.2** - State management
 - **WebSocket** - Real-time updates from Go backend
@@ -59,6 +59,7 @@ web/
 4. **Dark Mode** - Automatic theme switching
 5. **Vue Router** - Single page application routing
 6. **State Management** - Pinia stores for auth, miner, theme
+7. **Modern TailwindCSS v4** - CSS-based configuration with custom theme variables
 
 ### API Integration
 
@@ -87,3 +88,21 @@ The login flow maintains the same OAuth device flow as the original:
 5. Redirects to dashboard when authenticated
 
 All authentication is handled by Vue Router with navigation guards.
+
+## TailwindCSS v4 Configuration
+
+TailwindCSS v4 uses CSS-based configuration instead of a separate config file. Custom theme variables are defined in `src/style.css`:
+
+```css
+@theme {
+  --color-twitch-purple: #9146FF;
+  --color-twitch-purple-dark: #772CE8;
+}
+```
+
+These can be used in components as:
+- `bg-twitch-purple` - Twitch brand purple
+- `bg-twitch-purple-dark` - Darker variant for hover states
+- `text-twitch-purple` - Purple text color
+
+No separate `tailwind.config.js` file is needed.

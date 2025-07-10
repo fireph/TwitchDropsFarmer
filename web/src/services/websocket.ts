@@ -45,7 +45,23 @@ class WebSocketService {
 
     switch (message.type) {
       case 'status_update':
-        minerStore.updateStatus(message.data as MinerStatus)
+        // The enhanced status data now includes active_drops and total_progress
+        const statusData = message.data as any
+        
+        // Update the status with enhanced data
+        minerStore.updateStatus({
+          is_running: statusData.is_running,
+          current_stream: statusData.current_stream,
+          current_campaign: statusData.current_campaign,
+          current_progress: statusData.current_progress,
+          total_campaigns: statusData.total_campaigns,
+          claimed_drops: statusData.claimed_drops,
+          last_update: statusData.last_update,
+          next_switch: statusData.next_switch,
+          error_message: statusData.error_message,
+          active_drops: statusData.active_drops || []
+        } as MinerStatus)
+        
         break
       case 'config_update':
         minerStore.updateConfig(message.data as Config)

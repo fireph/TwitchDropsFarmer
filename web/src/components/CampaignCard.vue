@@ -1,11 +1,18 @@
 <template>
   <div class="space-y-4">
     <div class="flex items-start space-x-4">
-      <img 
-        :src="campaign.game.box_art_url" 
-        :alt="campaign.game.name"
-        class="w-16 h-20 rounded-lg object-cover"
-      >
+      <div class="w-16 h-20 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+        <img 
+          v-if="gameImageUrl"
+          :src="gameImageUrl" 
+          :alt="campaign.game.name"
+          class="w-16 h-20 rounded-lg object-cover"
+          @error="onImageError"
+        >
+        <div v-else class="text-gray-400 text-xs text-center p-2">
+          {{ campaign.game.name }}
+        </div>
+      </div>
       <div class="flex-1">
         <h4 class="text-lg font-medium text-gray-900 dark:text-white">{{ campaign.name }}</h4>
         <p class="text-sm text-gray-600 dark:text-gray-400">{{ campaign.game.name }}</p>
@@ -41,7 +48,7 @@
             <div>
               <p class="text-sm font-medium text-gray-900 dark:text-white">{{ drop.name }}</p>
               <p class="text-xs text-gray-500 dark:text-gray-400">
-                {{ drop.self.current_minutes_watched }} / {{ drop.required_minutes_watched }} minutes
+                {{ getCurrentMinutes(drop) }} / {{ drop.required_minutes_watched }} minutes
               </p>
             </div>
           </div>
@@ -49,11 +56,17 @@
             <div class="w-16 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
               <div 
                 class="bg-twitch-purple h-2 rounded-full transition-all duration-300"
-                :style="{ width: `${Math.min(100, (drop.self.current_minutes_watched / drop.required_minutes_watched) * 100)}%` }"
+                :style="{ width: `${getProgressPercentage(drop)}%` }"
               ></div>
             </div>
-            <span v-if="drop.self.is_claimed" class="text-xs text-green-600 dark:text-green-400 font-medium">
+            <span v-if="drop.self?.is_claimed" class="text-xs text-green-600 dark:text-green-400 font-medium">
               CLAIMED
+            </span>
+            <span v-else-if="getProgressPercentage(drop) >= 100" class="text-xs text-yellow-600 dark:text-yellow-400 font-medium">
+              READY
+            </span>
+            <span v-else class="text-xs text-blue-600 dark:text-blue-400 font-medium">
+              {{ Math.round(getProgressPercentage(drop)) }}%
             </span>
           </div>
         </div>
@@ -63,13 +76,67 @@
 </template>
 
 <script setup lang="ts">
-import type { Campaign } from '@/types'
+import { ref, computed } from 'vue'
+import type { Campaign, TimeBased } from '@/types'
+import { useMinerStore } from '@/stores/miner'
 
 interface Props {
   campaign: Campaign
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
+const minerStore = useMinerStore()
+
+const imageError = ref(false)
+
+const gameImageUrl = computed(() => {
+  if (imageError.value || !props.campaign.game.box_art_url) {
+    return null
+  }
+  
+  let url = props.campaign.game.box_art_url
+  
+  // Twitch box art URLs have placeholders that need to be replaced
+  if (url.includes('{width}') && url.includes('{height}')) {
+    url = url.replace('{width}', '128').replace('{height}', '170')
+  }
+  
+  // Handle empty or invalid URLs
+  if (!url || url === 'null' || url === 'undefined') {
+    return null
+  }
+  
+  return url
+})
+
+function onImageError() {
+  imageError.value = true
+  console.warn(`Failed to load game image for ${props.campaign.game.name}:`, props.campaign.game.box_art_url)
+}
+
+function getCurrentMinutes(drop: TimeBased): number {
+  // Check if this drop is from the current active campaign and get real-time progress
+  if (minerStore.isRunning && minerStore.currentCampaign?.id === props.campaign.id) {
+    // Look for this drop in active drops for real-time progress
+    const activeDrop = minerStore.activeDrops.find(ad => ad.id === drop.id)
+    if (activeDrop) {
+      return activeDrop.current_minutes
+    }
+  }
+  
+  // Fall back to the drop's self-reported progress
+  return drop.self?.current_minutes_watched || 0
+}
+
+function getProgressPercentage(drop: TimeBased): number {
+  const currentMinutes = getCurrentMinutes(drop)
+  const requiredMinutes = drop.required_minutes_watched
+  
+  if (requiredMinutes <= 0) return 0
+  
+  const percentage = (currentMinutes / requiredMinutes) * 100
+  return Math.min(100, Math.max(0, percentage))
+}
 
 function formatDate(dateString: string): string {
   const date = new Date(dateString)

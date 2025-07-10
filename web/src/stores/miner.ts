@@ -79,6 +79,7 @@ export const useMinerStore = defineStore('miner', () => {
     }
   }
 
+
   async function fetchConfig() {
     try {
       const response = await apiService.get<Config>('/api/config')
