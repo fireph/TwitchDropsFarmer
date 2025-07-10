@@ -27,7 +27,7 @@ export interface Stream {
   viewer_count: number;
   started_at: string; // ISO date string
   language: string;
-  thumbnail_url: string;
+  preview_image_url: string;
   tag_ids: string[];
 }
 
@@ -36,6 +36,7 @@ export interface Campaign {
   id: string;
   name: string;
   description: string;
+  image_url: string;
   game: Game;
   status: string;
   starts_at: string; // ISO date string

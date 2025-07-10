@@ -683,6 +683,7 @@ func (g *GraphQLClient) parseCampaignNode(node map[string]interface{}) (*Campaig
 	campaign.Name = getString(node, "name")
 	campaign.Description = getString(node, "description")
 	campaign.Status = getString(node, "status")
+	campaign.ImageURL = getString(node, "imageURL")
 
 	// Debug: Log campaign details for Don't Starve Together
 	gameName := ""
@@ -721,7 +722,7 @@ func (g *GraphQLClient) parseCampaignNode(node map[string]interface{}) (*Campaig
 				drop.Self.IsClaimed = false
 				drop.Self.CurrentMinutesWatched = 0
 				drop.Self.DropInstanceID = ""
-				
+
 				logrus.Debugf("    Drop '%s' initialized with default progress (will be updated from DropCurrentSessionContext)", drop.Name)
 
 				campaign.TimeBasedDrops = append(campaign.TimeBasedDrops, drop)
@@ -748,6 +749,12 @@ func (g *GraphQLClient) parseCampaignNode(node map[string]interface{}) (*Campaig
 
 // parseStreamsResponse parses the streams GraphQL response
 func (g *GraphQLClient) parseStreamsResponse(data interface{}) ([]Stream, error) {
+	// Log the raw streams response to debug stream structure
+	responseJSON, _ := json.MarshalIndent(data, "", "  ")
+	logrus.Debugf("=== RAW STREAMS RESPONSE ===")
+	logrus.Debugf("%s", string(responseJSON))
+	logrus.Debugf("=== END STREAMS RESPONSE ===")
+
 	dataMap, ok := data.(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("invalid response data format")
@@ -794,8 +801,9 @@ func (g *GraphQLClient) parseStreamsResponse(data interface{}) ([]Stream, error)
 		}
 
 		stream := Stream{
-			ID:    getString(node, "id"),
-			Title: getString(node, "title"),
+			ID:              getString(node, "id"),
+			Title:           getString(node, "title"),
+			PreviewImageURL: getString(node, "previewImageURL"),
 		}
 
 		if broadcaster, ok := node["broadcaster"].(map[string]interface{}); ok {

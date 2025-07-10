@@ -90,11 +90,11 @@ const minerStore = useMinerStore()
 const imageError = ref(false)
 
 const gameImageUrl = computed(() => {
-  if (imageError.value || !props.campaign.game.box_art_url) {
+  if (imageError.value || !props.campaign.image_url) {
     return null
   }
   
-  let url = props.campaign.game.box_art_url
+  let url = props.campaign.image_url
   
   // Twitch box art URLs have placeholders that need to be replaced
   if (url.includes('{width}') && url.includes('{height}')) {

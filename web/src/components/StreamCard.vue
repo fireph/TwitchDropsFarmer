@@ -2,7 +2,7 @@
   <div class="flex items-start space-x-4">
     <div class="flex-shrink-0">
       <img 
-        :src="stream.thumbnail_url.replace('{width}', '320').replace('{height}', '180')" 
+        :src="stream.preview_image_url.replace('{width}', '320').replace('{height}', '180')" 
         :alt="stream.title"
         class="w-32 h-18 rounded-lg object-cover"
       >
@@ -18,9 +18,9 @@
         <span class="text-xs text-gray-500 dark:text-gray-400">
           {{ formatViewerCount(stream.viewer_count) }} viewers
         </span>
-        <span class="text-xs text-gray-500 dark:text-gray-400">
+        <!-- <span class="text-xs text-gray-500 dark:text-gray-400">
           Started {{ formatStartTime(stream.started_at) }}
-        </span>
+        </span> -->
       </div>
     </div>
   </div>
