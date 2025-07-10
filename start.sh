@@ -12,20 +12,49 @@ if ! command -v go &> /dev/null; then
     exit 1
 fi
 
-# Install dependencies
-echo "Installing dependencies..."
+# Check if Node.js is installed
+if ! command -v node &> /dev/null; then
+    echo "Node.js is not installed. Please install Node.js 18 or higher."
+    exit 1
+fi
+
+# Install Go dependencies
+echo "Installing Go dependencies..."
 go mod tidy
 
-# Build the application
-echo "Building application..."
+# Build frontend
+echo "Building frontend..."
+cd web
+
+# Install npm dependencies if node_modules doesn't exist
+if [ ! -d "node_modules" ]; then
+    echo "Installing npm dependencies..."
+    npm install
+fi
+
+# Build the frontend
+echo "Building Vue.js frontend..."
+npm run build
+
+# Check if frontend build succeeded
+if [ $? -eq 0 ]; then
+    echo "Frontend build successful!"
+    cd ..
+else
+    echo "Frontend build failed!"
+    exit 1
+fi
+
+# Build the Go application
+echo "Building Go application..."
 go build .
 
-# Check if build succeeded
+# Check if Go build succeeded
 if [ $? -eq 0 ]; then
-    echo "Build successful!"
+    echo "Go build successful!"
     echo "Starting server on http://localhost:8080"
     ./twitchdropsfarmer
 else
-    echo "Build failed!"
+    echo "Go build failed!"
     exit 1
 fi

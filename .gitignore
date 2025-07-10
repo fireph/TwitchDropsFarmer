@@ -61,4 +61,4 @@ token.json
 
 twitchdropsfarmer
 
-drops.db*
+node_modules/

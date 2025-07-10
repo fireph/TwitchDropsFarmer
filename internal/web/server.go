@@ -73,16 +73,30 @@ func (s *Server) Router() *gin.Engine {
 	router.Use(ErrorHandlingMiddleware())
 
 	// Serve static files
-	router.Static("/static", "./web/static")
 	router.Static("/css", "./web/static/css")
 	router.Static("/js", "./web/static/js")
-
-	// Serve HTML pages
-	router.StaticFile("/", "./web/static/html/index.html")
-	router.StaticFile("/login", "./web/static/html/login.html")
+	router.Static("/assets", "./web/static/assets")
 
 	// Handle favicon
 	router.StaticFile("/favicon.ico", "./web/static/favicon.ico")
+
+	// Serve the Vue.js SPA for all non-API routes
+	router.NoRoute(func(c *gin.Context) {
+		path := c.Request.URL.Path
+		
+		// Check if it's an API route or WebSocket
+		if len(path) >= 4 && path[:4] == "/api" {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Not found"})
+			return
+		}
+		if len(path) >= 3 && path[:3] == "/ws" {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Not found"})
+			return
+		}
+		
+		// Serve the Vue.js index.html for all other routes (SPA routing)
+		c.File("./web/static/index.html")
+	})
 
 	// API routes
 	api := router.Group("/api")
@@ -121,14 +135,22 @@ func (s *Server) Router() *gin.Engine {
 			miner.POST("/stop", s.stopMiner)
 		}
 
-		// Settings endpoints
+		// Config endpoints (renamed from settings for consistency with Vue frontend)
+		config := api.Group("/config")
+		{
+			config.GET("/", s.getSettings)
+			config.POST("/", s.updateSettings)
+			config.POST("/game", s.addGameWithSlug)
+		}
+
+		// Settings endpoints (keep for backward compatibility)
 		settings := api.Group("/settings")
 		{
 			settings.GET("/", s.getSettings)
 			settings.PUT("/", s.updateSettings)
 		}
 
-		// Games endpoints
+		// Games endpoints (keep for backward compatibility)
 		games := api.Group("/games")
 		{
 			games.POST("/add", s.addGameWithSlug)
