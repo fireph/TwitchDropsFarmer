@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -30,6 +31,10 @@ type Server struct {
 
 	// Device code storage (in production use Redis/database)
 	deviceCodes map[string]*twitch.DeviceCodeResponse
+
+	// Miner context management
+	minerCtx    context.Context
+	minerCancel context.CancelFunc
 }
 
 func NewServer(cfg *config.Config, twitchClient *twitch.Client, miner *drops.Miner) *Server {
@@ -229,4 +234,17 @@ func (s *Server) handleWebSocket(c *gin.Context) {
 	// Send initial status
 	status := s.miner.GetStatus()
 	s.broadcastStatus(status)
+}
+
+// Cleanup properly cancels the miner context and closes connections
+func (s *Server) Cleanup() {
+	// Cancel miner context if it exists
+	if s.minerCancel != nil {
+		s.minerCancel()
+	}
+	
+	// Close all WebSocket connections
+	for conn := range s.wsConnections {
+		conn.Close()
+	}
 }

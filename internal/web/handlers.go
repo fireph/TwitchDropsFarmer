@@ -182,7 +182,7 @@ func (s *Server) getCampaignDrops(c *gin.Context) {
 	// Get drops from current miner status
 	status := s.miner.GetStatus()
 	var drops []drops.ActiveDrop
-	
+
 	// Find drops for the requested campaign
 	for _, drop := range status.ActiveDrops {
 		if status.CurrentCampaign != nil && status.CurrentCampaign.ID == campaignID {
@@ -390,10 +390,12 @@ func (s *Server) startMiner(c *gin.Context) {
 		return
 	}
 
-	// Start miner in background with a fresh context
+	// Create new context for miner
+	s.minerCtx, s.minerCancel = context.WithCancel(context.Background())
+
+	// Start miner in background with managed context
 	go func() {
-		ctx := context.Background()
-		if err := s.miner.Start(ctx); err != nil {
+		if err := s.miner.Start(s.minerCtx); err != nil {
 			logrus.Errorf("Miner start error: %v", err)
 		}
 	}()
@@ -405,6 +407,11 @@ func (s *Server) stopMiner(c *gin.Context) {
 	if !s.miner.IsRunning() {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Miner is not running"})
 		return
+	}
+
+	// Cancel the miner context first
+	if s.minerCancel != nil {
+		s.minerCancel()
 	}
 
 	if err := s.miner.Stop(); err != nil {

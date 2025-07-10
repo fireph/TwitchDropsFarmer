@@ -114,6 +114,8 @@ func (m *Miner) Start(ctx context.Context) error {
 		return fmt.Errorf("miner is already running")
 	}
 	m.isRunning = true
+	// Create fresh stopChan for each start to avoid closed channel issues
+	m.stopChan = make(chan struct{})
 	m.mu.Unlock()
 
 	logrus.Info("Starting drop miner...")
