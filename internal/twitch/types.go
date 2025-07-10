@@ -20,35 +20,36 @@ type Game struct {
 
 // Stream represents a live Twitch stream
 type Stream struct {
-	ID           string    `json:"id"`
-	UserID       string    `json:"user_id"`
-	UserLogin    string    `json:"user_login"`
-	UserName     string    `json:"user_name"`
-	GameID       string    `json:"game_id"`
-	GameName     string    `json:"game_name"`
-	Type         string    `json:"type"`
-	Title        string    `json:"title"`
-	ViewerCount  int       `json:"viewer_count"`
-	StartedAt    time.Time `json:"started_at"`
-	Language     string    `json:"language"`
-	ThumbnailURL string    `json:"thumbnail_url"`
-	TagIDs       []string  `json:"tag_ids"`
+	ID              string    `json:"id"`
+	UserID          string    `json:"user_id"`
+	UserLogin       string    `json:"user_login"`
+	UserName        string    `json:"user_name"`
+	GameID          string    `json:"game_id"`
+	GameName        string    `json:"game_name"`
+	Type            string    `json:"type"`
+	Title           string    `json:"title"`
+	ViewerCount     int       `json:"viewer_count"`
+	StartedAt       time.Time `json:"started_at"`
+	Language        string    `json:"language"`
+	PreviewImageURL string    `json:"preview_image_url"`
+	TagIDs          []string  `json:"tag_ids"`
 }
 
 // Campaign represents a Twitch drop campaign
 type Campaign struct {
-	ID              string       `json:"id"`
-	Name            string       `json:"name"`
-	Description     string       `json:"description"`
-	Game            Game         `json:"game"`
-	Status          string       `json:"status"`
-	StartsAt        time.Time    `json:"starts_at"`
-	EndsAt          time.Time    `json:"ends_at"`
-	AccountLinkURL  string       `json:"account_link_url"`
-	Self            CampaignSelf `json:"self"`
-	TimeBasedDrops  []TimeBased  `json:"time_based_drops"`
-	Allow           []string     `json:"allow"`
-	Deny            []string     `json:"deny"`
+	ID             string       `json:"id"`
+	Name           string       `json:"name"`
+	Description    string       `json:"description"`
+	Game           Game         `json:"game"`
+	Status         string       `json:"status"`
+	StartsAt       time.Time    `json:"starts_at"`
+	EndsAt         time.Time    `json:"ends_at"`
+	AccountLinkURL string       `json:"account_link_url"`
+	Self           CampaignSelf `json:"self"`
+	TimeBasedDrops []TimeBased  `json:"time_based_drops"`
+	Allow          []string     `json:"allow"`
+	Deny           []string     `json:"deny"`
+	ImageURL       string       `json:"image_url"`
 }
 
 // CampaignSelf represents user's relationship to a campaign
@@ -72,7 +73,6 @@ type TimeBasedSelf struct {
 	DropInstanceID        string `json:"drop_instance_id"`
 }
 
-
 // BenefitEdge represents a drop benefit
 type BenefitEdge struct {
 	Benefit Benefit `json:"benefit"`
@@ -80,12 +80,12 @@ type BenefitEdge struct {
 
 // Benefit represents a drop reward
 type Benefit struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	ImageURL  string `json:"image_url"`
-	IsIOS     bool   `json:"is_ios"`
-	IsAndroid bool   `json:"is_android"`
-	Game      Game   `json:"game"`
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	ImageAssetURL string `json:"image_asset_url"`
+	IsIOS         bool   `json:"is_ios"`
+	IsAndroid     bool   `json:"is_android"`
+	Game          Game   `json:"game"`
 }
 
 // PlaybackAccessToken represents stream access token

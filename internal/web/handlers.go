@@ -9,6 +9,7 @@ import (
 	"twitchdropsfarmer/internal/config"
 	"twitchdropsfarmer/internal/drops"
 	"twitchdropsfarmer/internal/twitch"
+	"twitchdropsfarmer/internal/util"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -273,107 +274,32 @@ func (s *Server) getDropProgress(c *gin.Context) {
 		return
 	}
 
-	// Use TDM's DropCurrentSessionContext to get real progress
+	// Use utility functions for consistent drop progress calculation
 	var activeDrops []drops.ActiveDrop
+
 	logrus.Infof("=== Progress Handler Debug ===")
 	logrus.Infof("CurrentCampaign is nil: %v", status.CurrentCampaign == nil)
 	logrus.Infof("CurrentStream is nil: %v", status.CurrentStream == nil)
+
 	if status.CurrentCampaign != nil && status.CurrentStream != nil {
-		logrus.Infof("=== Using DropCurrentSessionContext for Real Progress ===")
+		logrus.Infof("=== Using utility functions for Real Progress ===")
 		logrus.Infof("Channel ID (UserID): %s, Stream ID: %s", status.CurrentStream.UserID, status.CurrentStream.ID)
 
-		// Use DropCurrentSessionContext with correct parameters - use UserID as channelID
-		logrus.Infof("About to call GetCurrentDropProgress with channelID: %s", status.CurrentStream.UserID)
-		currentDropInfo, err := s.twitchClient.GetCurrentDropProgress(c.Request.Context(), status.CurrentStream.UserID)
+		// Generate active drops with real-time progress using utility function
+		var err error
+		activeDrops, err = util.GenerateActiveDrops(c.Request.Context(), s.twitchClient, status.CurrentCampaign, status.CurrentStream)
 		if err != nil {
-			logrus.Errorf("Failed to get DropCurrentSessionContext progress: %v", err)
+			logrus.Errorf("Failed to generate active drops: %v", err)
+			// Keep empty activeDrops array as fallback
 		} else {
-			logrus.Infof("GetCurrentDropProgress completed successfully - got real progress!")
+			logrus.Infof("Successfully generated active drops using utility function!")
 		}
-
-		// Use ONLY DropCurrentSessionContext for real progress, infer other drops
-		sortedDrops := make([]twitch.TimeBased, len(status.CurrentCampaign.TimeBasedDrops))
-		copy(sortedDrops, status.CurrentCampaign.TimeBasedDrops)
-
-		// Sort drops by required minutes (30, 90, 180)
-		for i := 0; i < len(sortedDrops)-1; i++ {
-			for j := i + 1; j < len(sortedDrops); j++ {
-				if sortedDrops[i].RequiredMinutesWatched > sortedDrops[j].RequiredMinutesWatched {
-					sortedDrops[i], sortedDrops[j] = sortedDrops[j], sortedDrops[i]
-				}
-			}
-		}
-
-		logrus.Infof("🔄 Processing drops in order by required minutes...")
-
-		for i, drop := range sortedDrops {
-			currentMinutes := 0
-			isClaimed := false
-
-			if currentDropInfo != nil && currentDropInfo.DropID == drop.ID {
-				// This is the currently active drop - use real progress
-				currentMinutes = currentDropInfo.CurrentMinutesWatched
-				isClaimed = currentMinutes >= drop.RequiredMinutesWatched
-				logrus.Infof("🎯 ACTIVE drop '%s': %d/%d minutes (real-time)", drop.Name, currentMinutes, drop.RequiredMinutesWatched)
-			} else {
-				// This is not the active drop - infer status
-				if currentDropInfo != nil {
-					// Find which drop is currently active
-					for j, checkDrop := range sortedDrops {
-						if checkDrop.ID == currentDropInfo.DropID {
-							if j > i {
-								// Active drop is after this one, so this one must be completed
-								currentMinutes = drop.RequiredMinutesWatched
-								isClaimed = true
-								logrus.Infof("✅ COMPLETED drop '%s': %d/%d minutes (inferred)", drop.Name, currentMinutes, drop.RequiredMinutesWatched)
-							} else {
-								// Active drop is this one or before, so this one is not started
-								currentMinutes = 0
-								isClaimed = false
-								logrus.Infof("⏳ NOT STARTED drop '%s': %d/%d minutes (inferred)", drop.Name, currentMinutes, drop.RequiredMinutesWatched)
-							}
-							break
-						}
-					}
-				}
-			}
-
-			activeDrop := drops.ActiveDrop{
-				ID:              drop.ID,
-				Name:            drop.Name,
-				GameName:        status.CurrentCampaign.Game.Name,
-				RequiredMinutes: drop.RequiredMinutesWatched,
-				CurrentMinutes:  currentMinutes,
-				Progress:        float64(currentMinutes) / float64(drop.RequiredMinutesWatched),
-				IsClaimed:       isClaimed,
-			}
-			activeDrops = append(activeDrops, activeDrop)
-		}
-	}
-
-	// Calculate total progress statistics
-	totalDrops := len(activeDrops)
-	claimedDrops := 0
-	for _, drop := range activeDrops {
-		if drop.IsClaimed {
-			claimedDrops++
-		}
-	}
-
-	completionPercentage := 0.0
-	if totalDrops > 0 {
-		completionPercentage = (float64(claimedDrops) / float64(totalDrops)) * 100
 	}
 
 	response := gin.H{
 		"is_running":   true,
 		"active_drops": activeDrops,
-		"total_progress": gin.H{
-			"claimed_drops":         claimedDrops,
-			"total_drops":           totalDrops,
-			"completion_percentage": completionPercentage,
-		},
-		"last_update": status.LastUpdate,
+		"last_update":  status.LastUpdate,
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -459,33 +385,6 @@ func (s *Server) updateSettings(c *gin.Context) {
 		s.config.PriorityGames = games
 	}
 
-	if excludeGames, ok := updates["exclude_games"].([]interface{}); ok {
-		var games []config.GameConfig
-		for _, game := range excludeGames {
-			if gameMap, ok := game.(map[string]interface{}); ok {
-				gameConfig := config.GameConfig{
-					Name: getString(gameMap, "name"),
-					Slug: getString(gameMap, "slug"),
-					ID:   getString(gameMap, "id"),
-				}
-				games = append(games, gameConfig)
-			} else if gameStr, ok := game.(string); ok {
-				// Handle legacy string format - convert to GameConfig
-				gameConfig := config.GameConfig{
-					Name: gameStr,
-					Slug: "", // Will be populated when used
-					ID:   "", // Will be populated when used
-				}
-				games = append(games, gameConfig)
-			}
-		}
-		s.config.ExcludeGames = games
-	}
-
-	if watchUnlisted, ok := updates["watch_unlisted"].(bool); ok {
-		s.config.WatchUnlisted = watchUnlisted
-	}
-
 	if claimDrops, ok := updates["claim_drops"].(bool); ok {
 		s.config.ClaimDrops = claimDrops
 	}
@@ -533,8 +432,6 @@ func (s *Server) updateSettings(c *gin.Context) {
 		MinimumPoints:   s.config.MinimumPoints,
 		MaximumStreams:  s.config.MaximumStreams,
 		PriorityGames:   s.config.PriorityGames,
-		ExcludeGames:    s.config.ExcludeGames,
-		WatchUnlisted:   s.config.WatchUnlisted,
 		ClaimDrops:      s.config.ClaimDrops,
 		WebhookURL:      s.config.WebhookURL,
 	}
@@ -558,8 +455,7 @@ func (s *Server) addGameWithSlug(c *gin.Context) {
 	}
 
 	var req struct {
-		GameName   string `json:"game_name" binding:"required"`
-		ToPriority bool   `json:"to_priority"`
+		GameName string `json:"game_name" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -576,8 +472,8 @@ func (s *Server) addGameWithSlug(c *gin.Context) {
 	}
 
 	// Add the game to config with the resolved slug and ID
-	logrus.Infof("Adding game '%s' with slug '%s' and ID '%s' to config (priority: %v)", req.GameName, slugInfo.Slug, slugInfo.ID, req.ToPriority)
-	err = s.config.AddGameToConfig(req.GameName, slugInfo.Slug, slugInfo.ID, req.ToPriority)
+	logrus.Infof("Adding game '%s' with slug '%s' and ID '%s' to config", req.GameName, slugInfo.Slug, slugInfo.ID)
+	err = s.config.AddGameToConfig(req.GameName, slugInfo.Slug, slugInfo.ID)
 	if err != nil {
 		logrus.Errorf("Failed to add game to config: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add game to config"})
@@ -593,8 +489,6 @@ func (s *Server) addGameWithSlug(c *gin.Context) {
 		MinimumPoints:   s.config.MinimumPoints,
 		MaximumStreams:  s.config.MaximumStreams,
 		PriorityGames:   s.config.PriorityGames,
-		ExcludeGames:    s.config.ExcludeGames,
-		WatchUnlisted:   s.config.WatchUnlisted,
 		ClaimDrops:      s.config.ClaimDrops,
 		WebhookURL:      s.config.WebhookURL,
 	}

@@ -9,6 +9,7 @@ import (
 	"twitchdropsfarmer/internal/config"
 	"twitchdropsfarmer/internal/drops"
 	"twitchdropsfarmer/internal/twitch"
+	"twitchdropsfarmer/internal/util"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -73,16 +74,30 @@ func (s *Server) Router() *gin.Engine {
 	router.Use(ErrorHandlingMiddleware())
 
 	// Serve static files
-	router.Static("/static", "./web/static")
 	router.Static("/css", "./web/static/css")
 	router.Static("/js", "./web/static/js")
-
-	// Serve HTML pages
-	router.StaticFile("/", "./web/static/html/index.html")
-	router.StaticFile("/login", "./web/static/html/login.html")
+	router.Static("/assets", "./web/static/assets")
 
 	// Handle favicon
 	router.StaticFile("/favicon.ico", "./web/static/favicon.ico")
+
+	// Serve the Vue.js SPA for all non-API routes
+	router.NoRoute(func(c *gin.Context) {
+		path := c.Request.URL.Path
+
+		// Check if it's an API route or WebSocket
+		if len(path) >= 4 && path[:4] == "/api" {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Not found"})
+			return
+		}
+		if len(path) >= 3 && path[:3] == "/ws" {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Not found"})
+			return
+		}
+
+		// Serve the Vue.js index.html for all other routes (SPA routing)
+		c.File("./web/static/index.html")
+	})
 
 	// API routes
 	api := router.Group("/api")
@@ -121,14 +136,22 @@ func (s *Server) Router() *gin.Engine {
 			miner.POST("/stop", s.stopMiner)
 		}
 
-		// Settings endpoints
+		// Config endpoints (renamed from settings for consistency with Vue frontend)
+		config := api.Group("/config")
+		{
+			config.GET("/", s.getSettings)
+			config.POST("/", s.updateSettings)
+			config.POST("/game", s.addGameWithSlug)
+		}
+
+		// Settings endpoints (keep for backward compatibility)
 		settings := api.Group("/settings")
 		{
 			settings.GET("/", s.getSettings)
 			settings.PUT("/", s.updateSettings)
 		}
 
-		// Games endpoints
+		// Games endpoints (keep for backward compatibility)
 		games := api.Group("/games")
 		{
 			games.POST("/add", s.addGameWithSlug)
@@ -189,9 +212,12 @@ func (s *Server) runWebSocketHub() {
 }
 
 func (s *Server) broadcastStatus(status *drops.MinerStatus) {
+	// Get enhanced progress data like the /api/miner/progress endpoint
+	enhancedData := s.getEnhancedStatusData(status)
+
 	data, err := json.Marshal(map[string]interface{}{
 		"type": "status_update",
-		"data": status,
+		"data": enhancedData,
 	})
 	if err != nil {
 		logrus.Errorf("Failed to marshal status: %v", err)
@@ -203,6 +229,39 @@ func (s *Server) broadcastStatus(status *drops.MinerStatus) {
 	default:
 		// Channel is full, skip this update
 	}
+}
+
+func (s *Server) getEnhancedStatusData(status *drops.MinerStatus) map[string]interface{} {
+	// Start with basic status
+	result := map[string]interface{}{
+		"is_running":       status.IsRunning,
+		"current_stream":   status.CurrentStream,
+		"current_campaign": status.CurrentCampaign,
+		"current_progress": status.CurrentProgress,
+		"total_campaigns":  status.TotalCampaigns,
+		"claimed_drops":    status.ClaimedDrops,
+		"last_update":      status.LastUpdate,
+		"next_switch":      status.NextSwitch,
+		"error_message":    status.ErrorMessage,
+		"active_drops":     []drops.ActiveDrop{},
+	}
+
+	// If miner is running, get real-time progress data using utility functions
+	if status.IsRunning && status.CurrentCampaign != nil && status.CurrentStream != nil {
+		ctx := context.Background()
+
+		// Generate active drops with real-time progress using utility function
+		activeDrops, err := util.GenerateActiveDrops(ctx, s.twitchClient, status.CurrentCampaign, status.CurrentStream)
+		if err != nil {
+			logrus.Debugf("Failed to generate active drops for WebSocket: %v", err)
+			// Keep empty activeDrops array as fallback
+		} else {
+			// Update result with enhanced data
+			result["active_drops"] = activeDrops
+		}
+	}
+
+	return result
 }
 
 func (s *Server) handleWebSocket(c *gin.Context) {
@@ -242,7 +301,7 @@ func (s *Server) Cleanup() {
 	if s.minerCancel != nil {
 		s.minerCancel()
 	}
-	
+
 	// Close all WebSocket connections
 	for conn := range s.wsConnections {
 		conn.Close()

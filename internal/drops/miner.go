@@ -43,8 +43,6 @@ type MinerConfig struct {
 	MinimumPoints   int
 	MaximumStreams  int
 	PriorityGames   []config.GameConfig
-	ExcludeGames    []config.GameConfig
-	WatchUnlisted   bool
 	ClaimDrops      bool
 	WebhookURL      string
 }
@@ -92,8 +90,6 @@ func NewMiner(twitchClient *twitch.Client) *Miner {
 			MinimumPoints:   50,
 			MaximumStreams:  3,
 			PriorityGames:   []config.GameConfig{},
-			ExcludeGames:    []config.GameConfig{},
-			WatchUnlisted:   true,
 			ClaimDrops:      true,
 		},
 		status: &MinerStatus{
@@ -243,36 +239,38 @@ func (m *Miner) checkAndUpdate(ctx context.Context) error {
 		return nil
 	}
 
+	var campaignsDetails []twitch.Campaign
+	for _, campaign := range campaigns {
+		// Skip expired campaigns first
+		if campaign.Status != "ACTIVE" {
+			logrus.Debugf("Skipping %s - campaign status is %s (not ACTIVE)", campaign.Game.Name, campaign.Status)
+			continue
+		}
+		if !m.isGamePriority(campaign.Game.Name) {
+			logrus.Debugf("Skipping %s - not a priority game", campaign.Game.Name)
+			continue
+		}
+
+		// Skip if not account connected and game is not in priority list
+		if !campaign.Self.IsAccountConnected {
+			logrus.Debugf("Skipping %s - not connected", campaign.Game.Name)
+			continue
+		}
+
+		campaignDetails, err := m.twitchClient.GetCampaignDetails(ctx, campaign.ID)
+		if err != nil {
+			logrus.Debugf("Skipping %s - couldn't fetch campaign details", campaign.Game.Name)
+			continue
+		}
+
+		campaignsDetails = append(campaignsDetails, *campaignDetails)
+	}
+
 	// Find best campaign to watch
-	bestCampaign := m.selectBestCampaign(campaigns)
+	bestCampaign := m.selectBestCampaign(campaignsDetails)
 	if bestCampaign == nil {
 		logrus.Info("No suitable campaign found")
 		return nil
-	}
-
-	// Always try to get detailed campaign information for priority games since ViewerDropsDashboard doesn't include timeBasedDrops
-	if m.isGamePriority(bestCampaign.Game.Name) {
-		logrus.Debugf("Fetching detailed campaign info for priority game '%s' campaign '%s'", bestCampaign.Game.Name, bestCampaign.Name)
-		logrus.Debugf("Basic campaign has %d timeBasedDrops", len(bestCampaign.TimeBasedDrops))
-
-		detailedCampaign, err := m.twitchClient.GetCampaignDetails(ctx, bestCampaign.ID)
-		if err != nil {
-			logrus.Errorf("Failed to get detailed campaign info: %v", err)
-		} else {
-			logrus.Infof("SUCCESS: Detailed campaign '%s' has %d timeBasedDrops",
-				detailedCampaign.Name, len(detailedCampaign.TimeBasedDrops))
-
-			// Log details about the drops
-			for i, drop := range detailedCampaign.TimeBasedDrops {
-				logrus.Infof("Drop %d: %s - %d minutes required, %d minutes watched, claimed: %v",
-					i+1, drop.Name, drop.RequiredMinutesWatched, drop.Self.CurrentMinutesWatched, drop.Self.IsClaimed)
-			}
-
-			// Always replace with detailed campaign since it has proper drop data
-			bestCampaign = detailedCampaign
-			logrus.Infof("✅ UPDATED campaign with detailed drop information: %d timeBasedDrops",
-				len(bestCampaign.TimeBasedDrops))
-		}
 	}
 
 	// Check if we need to switch campaigns
@@ -305,7 +303,6 @@ func (m *Miner) selectBestCampaign(campaigns []twitch.Campaign) *twitch.Campaign
 
 	logrus.Debugf("Selecting from %d campaigns", len(campaigns))
 	logrus.Debugf("Priority games configured: %v", m.config.PriorityGames)
-	logrus.Debugf("Watch unlisted: %v", m.config.WatchUnlisted)
 
 	// Debug: Count campaigns by game to see what's available
 	gameCount := make(map[string]int)
@@ -321,21 +318,18 @@ func (m *Miner) selectBestCampaign(campaigns []twitch.Campaign) *twitch.Campaign
 		logrus.Debugf("Evaluating campaign: %s (Game: %s, Status: %s, Connected: %v)",
 			campaign.Name, campaign.Game.Name, campaign.Status, campaign.Self.IsAccountConnected)
 
-		// Skip expired campaigns first
 		if campaign.Status != "ACTIVE" {
 			logrus.Debugf("Skipping %s - campaign status is %s (not ACTIVE)", campaign.Game.Name, campaign.Status)
 			continue
 		}
 
-		// Skip if not account connected and game is not in priority list
-		if !campaign.Self.IsAccountConnected && !m.isGamePriority(campaign.Game.Name) {
-			logrus.Debugf("Skipping %s - not connected and not priority", campaign.Game.Name)
+		if !m.isGamePriority(campaign.Game.Name) {
+			logrus.Debugf("Skipping %s - not priority", campaign.Game.Name)
 			continue
 		}
 
-		// Skip if game is excluded
-		if m.isGameExcluded(campaign.Game.Name) {
-			logrus.Debugf("Skipping %s - game is excluded", campaign.Game.Name)
+		if !campaign.Self.IsAccountConnected {
+			logrus.Debugf("Skipping %s - not connected", campaign.Game.Name)
 			continue
 		}
 
@@ -370,40 +364,26 @@ func (m *Miner) calculateCampaignScore(campaign *twitch.Campaign) int {
 	if priorityIndex >= 0 {
 		// Higher priority (earlier in list) gets higher score
 		// First game gets 200, second gets 190, third gets 180, etc.
-		priorityScore := 200 - (priorityIndex * 10)
+		priorityScore := 1000 - (priorityIndex * 10)
 		score += priorityScore
 		logrus.Debugf("Added %d points for priority game '%s' (position %d)", priorityScore, campaign.Game.Name, priorityIndex)
-	} else if m.config.WatchUnlisted {
-		// Non-priority games get base score if watching unlisted is enabled
-		score += 10
-		logrus.Debugf("Added 10 points for unlisted game '%s' (watch_unlisted=true)", campaign.Game.Name)
 	} else {
-		// If WatchUnlisted is false and game is not priority, return 0 immediately
-		logrus.Debugf("Skipping game '%s' (not priority and watch_unlisted=false)", campaign.Game.Name)
+		// If game is not priority, return 0 immediately
+		logrus.Debugf("Skipping game '%s' (not priority)", campaign.Game.Name)
 		return 0
 	}
 
-	// Account connected campaigns get bonus
-	if campaign.Self.IsAccountConnected {
-		score += 50
-	}
-
-	// Active campaigns get bonus
-	if campaign.Status == "ACTIVE" {
-		score += 25
-	}
-
-	// Active time-based drops get score
+	numFarmableDrops := 0
 	for _, drop := range campaign.TimeBasedDrops {
-		if !drop.Self.IsClaimed {
-			score += 10
-			// Partially completed drops get extra score
-			if drop.Self.CurrentMinutesWatched > 0 {
-				score += 5
-			}
+		if drop.RequiredMinutesWatched > 0 {
+			numFarmableDrops++
 		}
 	}
 
+	if numFarmableDrops == 0 {
+		logrus.Debugf("No farmable drops for campaign '%s' (game: %s)", campaign.Name, campaign.Game.Name)
+		return 0
+	}
 
 	return score
 }
@@ -691,15 +671,6 @@ func (m *Miner) getGamePriorityIndex(gameName string) int {
 		}
 	}
 	return -1
-}
-
-func (m *Miner) isGameExcluded(gameName string) bool {
-	for _, game := range m.config.ExcludeGames {
-		if game.Name == gameName {
-			return true
-		}
-	}
-	return false
 }
 
 func (m *Miner) IsRunning() bool {

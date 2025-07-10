@@ -61,7 +61,6 @@ go run .
 The application includes a web-based settings interface where you can configure:
 
 - **Priority Games**: Games to prioritize for drop farming
-- **Exclude Games**: Games to exclude from farming
 - **Auto-claim**: Automatically claim completed drops
 - **Check Interval**: How often to check for updates (seconds)
 - **Switch Threshold**: How long to watch a stream before switching (minutes)

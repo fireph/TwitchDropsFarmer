@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+/* TailwindCSS v4 Configuration */
+@theme {
+  --color-twitch-purple: #9146FF;
+  --color-twitch-purple-dark: #772CE8;
+}
+
+/* Custom styles */
+.pulse-dot {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .5;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+  }
+}

@@ -27,8 +27,6 @@ type Config struct {
 
 	// Drop mining configuration
 	PriorityGames   []GameConfig `json:"priority_games"`
-	ExcludeGames    []GameConfig `json:"exclude_games"`
-	WatchUnlisted   bool         `json:"watch_unlisted"`
 	ClaimDrops      bool         `json:"claim_drops"`
 	WebhookURL      string       `json:"webhook_url"`
 	CheckInterval   int          `json:"check_interval"`   // seconds
@@ -51,8 +49,6 @@ func Load() (*Config, error) {
 		ServerAddress:   getEnv("SERVER_ADDRESS", ":8080"),
 		TwitchClientID:  getEnv("TWITCH_CLIENT_ID", "kd1unb4b3q4t58fwlpcbzcbnm76a8fp"), // Twitch Android App ID (like TDM)
 		PriorityGames:   []GameConfig{},
-		ExcludeGames:    []GameConfig{},
-		WatchUnlisted:   true,
 		ClaimDrops:      true,
 		WebhookURL:      getEnv("WEBHOOK_URL", ""),
 		CheckInterval:   60,
@@ -175,43 +171,27 @@ func DeleteToken() error {
 }
 
 // AddGameToConfig adds a game to the configuration with slug and ID resolution
-func (c *Config) AddGameToConfig(gameName string, gameSlug string, gameID string, toPriority bool) error {
+func (c *Config) AddGameToConfig(gameName string, gameSlug string, gameID string) error {
 	gameConfig := GameConfig{
 		Name: gameName,
 		Slug: gameSlug,
 		ID:   gameID,
 	}
 
-	if toPriority {
-		// Check if game already exists in priority games
-		for i, existing := range c.PriorityGames {
-			if existing.Name == gameName {
-				// Update existing entry with slug and ID
-				c.PriorityGames[i].Slug = gameSlug
-				c.PriorityGames[i].ID = gameID
-				logrus.Infof("Updated existing priority game '%s' with slug '%s' and ID '%s'", gameName, gameSlug, gameID)
-				return c.Save()
-			}
+	// Check if game already exists in priority games
+	for i, existing := range c.PriorityGames {
+		if existing.Name == gameName {
+			// Update existing entry with slug and ID
+			c.PriorityGames[i].Slug = gameSlug
+			c.PriorityGames[i].ID = gameID
+			logrus.Infof("Updated existing priority game '%s' with slug '%s' and ID '%s'", gameName, gameSlug, gameID)
+			return c.Save()
 		}
-		c.PriorityGames = append(c.PriorityGames, gameConfig)
-		logrus.Infof("Added new priority game '%s' with slug '%s' and ID '%s'", gameName, gameSlug, gameID)
-	} else {
-		// Check if game already exists in exclude games
-		for i, existing := range c.ExcludeGames {
-			if existing.Name == gameName {
-				// Update existing entry with slug and ID
-				c.ExcludeGames[i].Slug = gameSlug
-				c.ExcludeGames[i].ID = gameID
-				logrus.Infof("Updated existing exclude game '%s' with slug '%s' and ID '%s'", gameName, gameSlug, gameID)
-				return c.Save()
-			}
-		}
-		c.ExcludeGames = append(c.ExcludeGames, gameConfig)
-		logrus.Infof("Added new exclude game '%s' with slug '%s' and ID '%s'", gameName, gameSlug, gameID)
 	}
+	c.PriorityGames = append(c.PriorityGames, gameConfig)
+	logrus.Infof("Added new priority game '%s' with slug '%s' and ID '%s'", gameName, gameSlug, gameID)
 
-	logrus.Infof("About to save config with %d priority games and %d exclude games",
-		len(c.PriorityGames), len(c.ExcludeGames))
+	logrus.Infof("About to save config with %d priority games", len(c.PriorityGames))
 	return c.Save()
 }
 
@@ -219,13 +199,6 @@ func (c *Config) AddGameToConfig(gameName string, gameSlug string, gameID string
 func (c *Config) GetGameSlugOrEmpty(gameName string) string {
 	// Check priority games first
 	for _, game := range c.PriorityGames {
-		if game.Name == gameName {
-			return game.Slug
-		}
-	}
-
-	// Check exclude games
-	for _, game := range c.ExcludeGames {
 		if game.Name == gameName {
 			return game.Slug
 		}
