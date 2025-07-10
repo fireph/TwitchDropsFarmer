@@ -21,7 +21,6 @@ type GameConfig struct {
 type Config struct {
 	// Server configuration
 	ServerAddress string `json:"server_address"`
-	DatabasePath  string `json:"database_path"`
 
 	// Twitch API configuration
 	TwitchClientID string `json:"twitch_client_id"`
@@ -50,7 +49,6 @@ func Load() (*Config, error) {
 
 	cfg := &Config{
 		ServerAddress:   getEnv("SERVER_ADDRESS", ":8080"),
-		DatabasePath:    getEnv("DATABASE_PATH", filepath.Join(".", "config", "drops.db")),
 		TwitchClientID:  getEnv("TWITCH_CLIENT_ID", "kd1unb4b3q4t58fwlpcbzcbnm76a8fp"), // Twitch Android App ID (like TDM)
 		PriorityGames:   []GameConfig{},
 		ExcludeGames:    []GameConfig{},
