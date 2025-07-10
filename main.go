@@ -19,7 +19,7 @@ import (
 
 func main() {
 	// Initialize logging
-	logrus.SetLevel(logrus.InfoLevel) // Set to info to reduce verbose output
+	logrus.SetLevel(logrus.InfoLevel)
 	logrus.SetFormatter(&logrus.TextFormatter{
 		FullTimestamp: true,
 	})
@@ -46,8 +46,6 @@ func main() {
 		MinimumPoints:   cfg.MinimumPoints,
 		MaximumStreams:  cfg.MaximumStreams,
 		PriorityGames:   cfg.PriorityGames,
-		ExcludeGames:    cfg.ExcludeGames,
-		WatchUnlisted:   cfg.WatchUnlisted,
 		ClaimDrops:      cfg.ClaimDrops,
 		WebhookURL:      cfg.WebhookURL,
 	}

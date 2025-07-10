@@ -19,8 +19,6 @@ export const useMinerStore = defineStore('miner', () => {
     server_address: ':8080',
     twitch_client_id: '',
     priority_games: [],
-    exclude_games: [],
-    watch_unlisted: true,
     claim_drops: true,
     webhook_url: '',
     check_interval: 60,
@@ -103,14 +101,13 @@ export const useMinerStore = defineStore('miner', () => {
     }
   }
 
-  async function addGame(gameName: string, toPriority: boolean = true) {
+  async function addGame(gameName: string) {
     try {
       isLoading.value = true
       error.value = null
       
       await apiService.post('/api/config/game', {
-        game_name: gameName,
-        to_priority: toPriority
+        game_name: gameName
       })
       
       // Refresh config after adding game

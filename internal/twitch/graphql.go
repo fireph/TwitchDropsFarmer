@@ -524,7 +524,6 @@ func generateRandomNumber() int {
 
 // parseCampaignsResponse parses the campaigns GraphQL response
 func (g *GraphQLClient) parseCampaignsResponse(data interface{}) ([]Campaign, error) {
-	// Log summary instead of full response to avoid truncation
 	logrus.Debugf("Processing campaigns response")
 
 	dataMap, ok := data.(map[string]interface{})
@@ -567,12 +566,6 @@ func (g *GraphQLClient) parseCampaignsResponse(data interface{}) ([]Campaign, er
 		if err != nil {
 			logrus.Errorf("Campaign %d: Failed to parse campaign: %v", i, err)
 			continue
-		}
-
-		// Log if this is Diablo IV campaign by name or ID
-		if campaign.Game.Name == "Diablo IV" || campaign.Name == "Season 9 Launch Drops" {
-			logrus.Infof("Successfully parsed Diablo IV campaign: Name='%s' Game='%s' (ID: %s, Status: %s, Connected: %v)",
-				campaign.Name, campaign.Game.Name, campaign.ID, campaign.Status, campaign.Self.IsAccountConnected)
 		}
 
 		campaigns = append(campaigns, *campaign)
@@ -696,22 +689,6 @@ func (g *GraphQLClient) parseCampaignNode(node map[string]interface{}) (*Campaig
 	if game, ok := node["game"].(map[string]interface{}); ok {
 		gameName = getString(game, "displayName")
 	}
-	if gameName == "Don't Starve Together" {
-		logrus.Debugf("=== Don't Starve Together Campaign Debug ===")
-		logrus.Debugf("Campaign ID: %s", campaign.ID)
-		logrus.Debugf("Campaign Name: %s", campaign.Name)
-		logrus.Debugf("Campaign Status: %s", campaign.Status)
-
-		// Log all keys in the node
-		logrus.Debugf("Available keys in campaign node: %+v", getKeys(node))
-
-		// Check if timeBasedDrops exists
-		if timeBasedDrops, exists := node["timeBasedDrops"]; exists {
-			logrus.Debugf("timeBasedDrops field exists: %+v", timeBasedDrops)
-		} else {
-			logrus.Debugf("timeBasedDrops field NOT found in campaign")
-		}
-	}
 
 	// Game info
 	if game, ok := node["game"].(map[string]interface{}); ok {
@@ -724,7 +701,8 @@ func (g *GraphQLClient) parseCampaignNode(node map[string]interface{}) (*Campaig
 
 	// Time-based drops
 	if timeBasedDrops, ok := node["timeBasedDrops"].([]interface{}); ok {
-		for _, dropInterface := range timeBasedDrops {
+		logrus.Debugf("Campaign '%s' (%s): Found %d timeBasedDrops", campaign.Name, gameName, len(timeBasedDrops))
+		for i, dropInterface := range timeBasedDrops {
 			if dropMap, ok := dropInterface.(map[string]interface{}); ok {
 				drop := TimeBased{
 					ID:   getString(dropMap, "id"),
@@ -735,26 +713,28 @@ func (g *GraphQLClient) parseCampaignNode(node map[string]interface{}) (*Campaig
 					drop.RequiredMinutesWatched = int(requiredMinutes)
 				}
 
-				// Self info (user progress)
-				if self, ok := dropMap["self"].(map[string]interface{}); ok {
-					drop.Self.IsClaimed = getBool(self, "isClaimed")
-					if currentMinutes, ok := self["currentMinutesWatched"].(float64); ok {
-						drop.Self.CurrentMinutesWatched = int(currentMinutes)
-					}
-					drop.Self.DropInstanceID = getString(self, "dropInstanceID")
+				logrus.Debugf("  Drop %d: '%s' requires %d minutes", i, drop.Name, drop.RequiredMinutesWatched)
 
-					// Debug logging for Don't Starve Together
-					if gameName == "Don't Starve Together" {
-						logrus.Debugf("Drop '%s' self data: %+v", drop.Name, self)
-						logrus.Debugf("Available keys in self: %+v", getKeys(self))
-					}
-				} else if gameName == "Don't Starve Together" {
-					logrus.Debugf("No 'self' field found for drop '%s'", drop.Name)
-					logrus.Debugf("Available keys in drop: %+v", getKeys(dropMap))
-				}
+				// Note: GetCampaignDetails response doesn't include user progress ("self" field)
+				// User progress comes from DropCurrentSessionContext API call
+				// Initialize with default values - progress will be updated separately
+				drop.Self.IsClaimed = false
+				drop.Self.CurrentMinutesWatched = 0
+				drop.Self.DropInstanceID = ""
+				
+				logrus.Debugf("    Drop '%s' initialized with default progress (will be updated from DropCurrentSessionContext)", drop.Name)
 
 				campaign.TimeBasedDrops = append(campaign.TimeBasedDrops, drop)
+			} else {
+				logrus.Errorf("Campaign '%s' (%s): Drop %d is not a valid map", campaign.Name, gameName, i)
 			}
+		}
+	} else {
+		// Check what type timeBasedDrops actually is
+		if timeBasedDropsRaw, exists := node["timeBasedDrops"]; exists {
+			logrus.Errorf("Campaign '%s' (%s): timeBasedDrops exists but wrong type: %T", campaign.Name, gameName, timeBasedDropsRaw)
+		} else {
+			logrus.Debugf("Campaign '%s' (%s): No timeBasedDrops field found", campaign.Name, gameName)
 		}
 	}
 

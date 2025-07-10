@@ -385,33 +385,6 @@ func (s *Server) updateSettings(c *gin.Context) {
 		s.config.PriorityGames = games
 	}
 
-	if excludeGames, ok := updates["exclude_games"].([]interface{}); ok {
-		var games []config.GameConfig
-		for _, game := range excludeGames {
-			if gameMap, ok := game.(map[string]interface{}); ok {
-				gameConfig := config.GameConfig{
-					Name: getString(gameMap, "name"),
-					Slug: getString(gameMap, "slug"),
-					ID:   getString(gameMap, "id"),
-				}
-				games = append(games, gameConfig)
-			} else if gameStr, ok := game.(string); ok {
-				// Handle legacy string format - convert to GameConfig
-				gameConfig := config.GameConfig{
-					Name: gameStr,
-					Slug: "", // Will be populated when used
-					ID:   "", // Will be populated when used
-				}
-				games = append(games, gameConfig)
-			}
-		}
-		s.config.ExcludeGames = games
-	}
-
-	if watchUnlisted, ok := updates["watch_unlisted"].(bool); ok {
-		s.config.WatchUnlisted = watchUnlisted
-	}
-
 	if claimDrops, ok := updates["claim_drops"].(bool); ok {
 		s.config.ClaimDrops = claimDrops
 	}
@@ -459,8 +432,6 @@ func (s *Server) updateSettings(c *gin.Context) {
 		MinimumPoints:   s.config.MinimumPoints,
 		MaximumStreams:  s.config.MaximumStreams,
 		PriorityGames:   s.config.PriorityGames,
-		ExcludeGames:    s.config.ExcludeGames,
-		WatchUnlisted:   s.config.WatchUnlisted,
 		ClaimDrops:      s.config.ClaimDrops,
 		WebhookURL:      s.config.WebhookURL,
 	}
@@ -484,8 +455,7 @@ func (s *Server) addGameWithSlug(c *gin.Context) {
 	}
 
 	var req struct {
-		GameName   string `json:"game_name" binding:"required"`
-		ToPriority bool   `json:"to_priority"`
+		GameName string `json:"game_name" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -502,8 +472,8 @@ func (s *Server) addGameWithSlug(c *gin.Context) {
 	}
 
 	// Add the game to config with the resolved slug and ID
-	logrus.Infof("Adding game '%s' with slug '%s' and ID '%s' to config (priority: %v)", req.GameName, slugInfo.Slug, slugInfo.ID, req.ToPriority)
-	err = s.config.AddGameToConfig(req.GameName, slugInfo.Slug, slugInfo.ID, req.ToPriority)
+	logrus.Infof("Adding game '%s' with slug '%s' and ID '%s' to config", req.GameName, slugInfo.Slug, slugInfo.ID)
+	err = s.config.AddGameToConfig(req.GameName, slugInfo.Slug, slugInfo.ID)
 	if err != nil {
 		logrus.Errorf("Failed to add game to config: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add game to config"})
@@ -519,8 +489,6 @@ func (s *Server) addGameWithSlug(c *gin.Context) {
 		MinimumPoints:   s.config.MinimumPoints,
 		MaximumStreams:  s.config.MaximumStreams,
 		PriorityGames:   s.config.PriorityGames,
-		ExcludeGames:    s.config.ExcludeGames,
-		WatchUnlisted:   s.config.WatchUnlisted,
 		ClaimDrops:      s.config.ClaimDrops,
 		WebhookURL:      s.config.WebhookURL,
 	}

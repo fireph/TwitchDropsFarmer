@@ -20,9 +20,18 @@ func GenerateActiveDrops(ctx context.Context, twitchClient *twitch.Client, campa
 		currentDropInfo = nil
 	}
 
-	// Create a sorted copy of the campaign's time-based drops
-	sortedDrops := make([]twitch.TimeBased, len(campaign.TimeBasedDrops))
-	copy(sortedDrops, campaign.TimeBasedDrops)
+	// Filter out subscription/gift sub drops (RequiredMinutesWatched = 0)
+	// These drops require subscriptions or gift subs and cannot be farmed through watching
+	var farmableDrops []twitch.TimeBased
+	for _, drop := range campaign.TimeBasedDrops {
+		if drop.RequiredMinutesWatched > 0 {
+			farmableDrops = append(farmableDrops, drop)
+		}
+	}
+
+	// Create a sorted copy of the farmable drops
+	sortedDrops := make([]twitch.TimeBased, len(farmableDrops))
+	copy(sortedDrops, farmableDrops)
 
 	// Sort drops by required minutes (30, 90, 180, etc.)
 	// This ensures we process them in the correct order for status inference

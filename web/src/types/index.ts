@@ -217,8 +217,6 @@ export interface Config {
   
   // Drop mining configuration
   priority_games: GameConfig[];
-  exclude_games: GameConfig[];
-  watch_unlisted: boolean;
   claim_drops: boolean;
   webhook_url: string;
   check_interval: number; // seconds

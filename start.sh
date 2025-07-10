@@ -47,7 +47,7 @@ fi
 
 # Build the Go application
 echo "Building Go application..."
-go build .
+go run .
 
 # Check if Go build succeeded
 if [ $? -eq 0 ]; then
