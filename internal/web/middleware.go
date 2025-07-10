@@ -64,53 +64,6 @@ func LoggingMiddleware() gin.HandlerFunc {
 	}
 }
 
-// Rate limiting middleware (simple implementation)
-func RateLimitMiddleware() gin.HandlerFunc {
-	type client struct {
-		requests int
-		lastSeen time.Time
-	}
-
-	clients := make(map[string]*client)
-	const maxRequests = 100
-	const windowSize = time.Minute
-
-	return func(c *gin.Context) {
-		ip := c.ClientIP()
-		now := time.Now()
-
-		// Clean up old entries
-		for k, v := range clients {
-			if now.Sub(v.lastSeen) > windowSize {
-				delete(clients, k)
-			}
-		}
-
-		// Check current client
-		if cl, exists := clients[ip]; exists {
-			if now.Sub(cl.lastSeen) > windowSize {
-				cl.requests = 1
-				cl.lastSeen = now
-			} else {
-				cl.requests++
-				if cl.requests > maxRequests {
-					c.JSON(http.StatusTooManyRequests, gin.H{
-						"error": "Rate limit exceeded",
-					})
-					c.Abort()
-					return
-				}
-			}
-		} else {
-			clients[ip] = &client{
-				requests: 1,
-				lastSeen: now,
-			}
-		}
-
-		c.Next()
-	}
-}
 
 // Authentication middleware
 func (s *Server) AuthMiddleware() gin.HandlerFunc {
