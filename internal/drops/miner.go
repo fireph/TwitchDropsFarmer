@@ -362,12 +362,15 @@ func (m *Miner) selectBestCampaign(campaigns []twitch.Campaign) *twitch.Campaign
 func (m *Miner) calculateCampaignScore(campaign *twitch.Campaign) int {
 	score := 0
 
-	// Priority games get higher score
-	isPriority := m.isGamePriority(campaign.Game.Name)
-	logrus.Debugf("Game '%s' priority check: %v (priority games: %v)", campaign.Game.Name, isPriority, m.config.PriorityGames)
-	if isPriority {
-		score += 100
-		logrus.Debugf("Added 100 points for priority game '%s'", campaign.Game.Name)
+	// Priority games get higher score based on their position in the priority list
+	priorityIndex := m.getGamePriorityIndex(campaign.Game.Name)
+	logrus.Debugf("Game '%s' priority index: %d (priority games: %v)", campaign.Game.Name, priorityIndex, m.config.PriorityGames)
+	if priorityIndex >= 0 {
+		// Higher priority (earlier in list) gets higher score
+		// First game gets 200, second gets 190, third gets 180, etc.
+		priorityScore := 200 - (priorityIndex * 10)
+		score += priorityScore
+		logrus.Debugf("Added %d points for priority game '%s' (position %d)", priorityScore, campaign.Game.Name, priorityIndex)
 	} else if m.config.WatchUnlisted {
 		// Non-priority games get base score if watching unlisted is enabled
 		score += 10
@@ -675,6 +678,17 @@ func (m *Miner) isGamePriority(gameName string) bool {
 		}
 	}
 	return false
+}
+
+// getGamePriorityIndex returns the index of the game in the priority list (0-based)
+// Returns -1 if the game is not in the priority list
+func (m *Miner) getGamePriorityIndex(gameName string) int {
+	for i, game := range m.config.PriorityGames {
+		if game.Name == gameName {
+			return i
+		}
+	}
+	return -1
 }
 
 func (m *Miner) isGameExcluded(gameName string) bool {
