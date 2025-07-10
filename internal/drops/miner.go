@@ -251,14 +251,14 @@ func (m *Miner) checkAndUpdate(ctx context.Context) error {
 	// Always try to get detailed campaign information for priority games since ViewerDropsDashboard doesn't include timeBasedDrops
 	if m.isGamePriority(bestCampaign.Game.Name) {
 		logrus.Debugf("Fetching detailed campaign info for priority game '%s' campaign '%s'", bestCampaign.Game.Name, bestCampaign.Name)
-		logrus.Debugf("Basic campaign has %d timeBasedDrops and %d eventBasedDrops", len(bestCampaign.TimeBasedDrops), len(bestCampaign.EventBasedDrops))
+		logrus.Debugf("Basic campaign has %d timeBasedDrops", len(bestCampaign.TimeBasedDrops))
 
 		detailedCampaign, err := m.twitchClient.GetCampaignDetails(ctx, bestCampaign.ID)
 		if err != nil {
 			logrus.Errorf("Failed to get detailed campaign info: %v", err)
 		} else {
-			logrus.Infof("SUCCESS: Detailed campaign '%s' has %d timeBasedDrops and %d eventBasedDrops",
-				detailedCampaign.Name, len(detailedCampaign.TimeBasedDrops), len(detailedCampaign.EventBasedDrops))
+			logrus.Infof("SUCCESS: Detailed campaign '%s' has %d timeBasedDrops",
+				detailedCampaign.Name, len(detailedCampaign.TimeBasedDrops))
 
 			// Log details about the drops
 			for i, drop := range detailedCampaign.TimeBasedDrops {
@@ -268,8 +268,8 @@ func (m *Miner) checkAndUpdate(ctx context.Context) error {
 
 			// Always replace with detailed campaign since it has proper drop data
 			bestCampaign = detailedCampaign
-			logrus.Infof("✅ UPDATED campaign with detailed drop information: %d timeBasedDrops, %d eventBasedDrops",
-				len(bestCampaign.TimeBasedDrops), len(bestCampaign.EventBasedDrops))
+			logrus.Infof("✅ UPDATED campaign with detailed drop information: %d timeBasedDrops",
+				len(bestCampaign.TimeBasedDrops))
 		}
 	}
 
@@ -399,8 +399,6 @@ func (m *Miner) calculateCampaignScore(campaign *twitch.Campaign) int {
 		}
 	}
 
-	// Event-based drops get score
-	score += len(campaign.EventBasedDrops) * 5
 
 	return score
 }

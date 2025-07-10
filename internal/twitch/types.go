@@ -47,7 +47,6 @@ type Campaign struct {
 	AccountLinkURL  string       `json:"account_link_url"`
 	Self            CampaignSelf `json:"self"`
 	TimeBasedDrops  []TimeBased  `json:"time_based_drops"`
-	EventBasedDrops []EventBased `json:"event_based_drops"`
 	Allow           []string     `json:"allow"`
 	Deny            []string     `json:"deny"`
 }
@@ -73,12 +72,6 @@ type TimeBasedSelf struct {
 	DropInstanceID        string `json:"drop_instance_id"`
 }
 
-// EventBased represents an event-based drop
-type EventBased struct {
-	ID           string        `json:"id"`
-	Name         string        `json:"name"`
-	BenefitEdges []BenefitEdge `json:"benefit_edges"`
-}
 
 // BenefitEdge represents a drop benefit
 type BenefitEdge struct {
