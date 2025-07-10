@@ -83,14 +83,6 @@
             <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-purple-600"></div>
           </label>
         </div>
-
-        <button 
-          @click="saveSettings"
-          :disabled="minerStore.isLoading"
-          class="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white py-2 px-4 rounded-lg font-medium transition-colors"
-        >
-          Save Settings
-        </button>
       </div>
     </div>
   </div>
@@ -104,7 +96,6 @@ import draggable from 'vuedraggable'
 
 const minerStore = useMinerStore()
 const newGameName = ref('')
-const newExcludeGameName = ref('')
 const localConfig = reactive({ ...minerStore.config })
 
 // Watch for config changes from the store
@@ -139,9 +130,10 @@ async function removeGame(game: GameConfig) {
   }
 }
 
-function updateSetting(key: string, value: any) {
+async function updateSetting(key: string, value: any) {
   // Update the store config
   ;(minerStore.config as any)[key] = value
+  await minerStore.saveConfig()
 }
 
 async function onGameReorder() {
@@ -151,16 +143,6 @@ async function onGameReorder() {
     await minerStore.saveConfig()
   } catch (error) {
     console.error('Failed to save game order:', error)
-  }
-}
-
-async function saveSettings() {
-  try {
-    // Copy local config to store
-    Object.assign(minerStore.config, localConfig)
-    await minerStore.saveConfig()
-  } catch (error) {
-    console.error('Failed to save settings:', error)
   }
 }
 </script>
