@@ -140,11 +140,8 @@
           </div>
         </div>
 
-        <!-- Settings -->
-        <SettingsCard />
-
         <!-- Current Stream -->
-        <div v-if="minerStore.currentStream" class="bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+        <div v-if="minerStore.currentStream" class="bg-white dark:bg-gray-800 rounded-lg shadow-sm mb-8">
           <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
             <h3 class="text-lg font-medium text-gray-900 dark:text-white">Current Stream</h3>
           </div>
@@ -152,6 +149,9 @@
             <StreamCard :stream="minerStore.currentStream" />
           </div>
         </div>
+
+        <!-- Settings -->
+        <SettingsCard />
       </div>
     </main>
   </div>
