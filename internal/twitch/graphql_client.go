@@ -83,7 +83,7 @@ func (c *Client) GetCurrentDropProgress(ctx context.Context, channelID string) (
 	}
 
 	// Use TDM's exact DropCurrentSessionContext operation
-	operation, err := GetOperation("CurrentDrop", map[string]interface{}{
+	operation, err := GetOperation(OpCurrentDrop, map[string]interface{}{
 		"channelID":    channelID, // channel ID as string
 		"channelLogin": "",        // always empty string per TDM
 	})

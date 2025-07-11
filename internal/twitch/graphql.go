@@ -149,15 +149,15 @@ func (g *GraphQLClient) GQLRequest(ctx context.Context, operation *GQLOperation)
 	return &gqlResp, nil
 }
 
-func (g *GraphQLClient) executeOperation(ctx context.Context, operationName string, variables map[string]interface{}) (*GraphQLResponse, error) {
-	operation, err := GetOperation(operationName, variables)
+func (g *GraphQLClient) executeOperation(ctx context.Context, opType OperationType, variables map[string]interface{}) (*GraphQLResponse, error) {
+	operation, err := GetOperation(opType, variables)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get %s operation: %w", operationName, err)
+		return nil, fmt.Errorf("failed to get %s operation: %w", opType.String(), err)
 	}
 
 	resp, err := g.GQLRequest(ctx, operation)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute %s query: %w", operationName, err)
+		return nil, fmt.Errorf("failed to execute %s query: %w", opType.String(), err)
 	}
 
 	return resp, nil
@@ -165,7 +165,7 @@ func (g *GraphQLClient) executeOperation(ctx context.Context, operationName stri
 
 // GetCampaigns fetches drop campaigns using TDM's exact approach
 func (g *GraphQLClient) GetCampaigns(ctx context.Context) ([]Campaign, error) {
-	resp, err := g.executeOperation(ctx, "Campaigns", nil)
+	resp, err := g.executeOperation(ctx, OpCampaigns, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +181,7 @@ func (g *GraphQLClient) GetCampaigns(ctx context.Context) ([]Campaign, error) {
 
 // GetInventory fetches drop inventory using TDM's exact approach
 func (g *GraphQLClient) GetInventory(ctx context.Context) (*Inventory, error) {
-	resp, err := g.executeOperation(ctx, "Inventory", nil)
+	resp, err := g.executeOperation(ctx, OpInventory, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +197,7 @@ func (g *GraphQLClient) GetInventory(ctx context.Context) (*Inventory, error) {
 
 // GetStreamsForGame fetches live streams for a specific game using TDM's approach
 func (g *GraphQLClient) GetStreamsForGame(ctx context.Context, gameSlug string, limit int) ([]Stream, error) {
-	resp, err := g.executeOperation(ctx, "GameDirectory", map[string]interface{}{
+	resp, err := g.executeOperation(ctx, OpGameDirectory, map[string]interface{}{
 		"slug":  gameSlug,
 		"limit": limit,
 	})
@@ -217,7 +217,7 @@ func (g *GraphQLClient) GetStreamsForGame(ctx context.Context, gameSlug string, 
 
 // ClaimDrop claims a completed drop using TDM's exact approach
 func (g *GraphQLClient) ClaimDrop(ctx context.Context, dropInstanceID string) error {
-	resp, err := g.executeOperation(ctx, "ClaimDrop", map[string]interface{}{
+	resp, err := g.executeOperation(ctx, OpClaimDrop, map[string]interface{}{
 		"input": map[string]interface{}{
 			"dropInstanceID": dropInstanceID,
 		},
@@ -234,7 +234,7 @@ func (g *GraphQLClient) ClaimDrop(ctx context.Context, dropInstanceID string) er
 
 // GetGameSlug converts a game name to its Twitch slug using DirectoryGameRedirect
 func (g *GraphQLClient) GetGameSlug(ctx context.Context, gameName string) (*GameSlugInfo, error) {
-	resp, err := g.executeOperation(ctx, "SlugRedirect", map[string]interface{}{
+	resp, err := g.executeOperation(ctx, OpSlugRedirect, map[string]interface{}{
 		"name": gameName,
 	})
 	if err != nil {
@@ -303,7 +303,7 @@ func (g *GraphQLClient) parseSlugRedirectResponse(data interface{}) (*GameSlugIn
 
 // GetPlaybackAccessToken gets stream access token for watching (like TDM)
 func (g *GraphQLClient) GetPlaybackAccessToken(ctx context.Context, channelLogin string) (*PlaybackAccessToken, error) {
-	resp, err := g.executeOperation(ctx, "PlaybackAccessToken", map[string]interface{}{
+	resp, err := g.executeOperation(ctx, OpPlaybackAccessToken, map[string]interface{}{
 		"login": channelLogin,
 	})
 	if err != nil {
@@ -553,7 +553,7 @@ func (g *GraphQLClient) parseCampaignsResponse(data interface{}) ([]Campaign, er
 
 // GetCampaignDetails fetches detailed information about a specific campaign
 func (g *GraphQLClient) GetCampaignDetails(ctx context.Context, campaignID string, userLogin string) (*Campaign, error) {
-	resp, err := g.executeOperation(ctx, "CampaignDetails", map[string]interface{}{
+	resp, err := g.executeOperation(ctx, OpCampaignDetails, map[string]interface{}{
 		"dropID":       campaignID,
 		"channelLogin": userLogin,
 	})
