@@ -615,12 +615,7 @@ func (g *GraphQLClient) parseInventoryResponse(data interface{}) (*InventoryGQL,
 		return nil, fmt.Errorf("Error unmarshalling OpInventoryResponse: %w", err)
 	}
 
-	if opResp.CurrentUser == nil || opResp.CurrentUser.Inventory == nil {
-		logrus.Warning("No currentUser or inventory in OpInventoryResponse")
-		return &InventoryGQL{}, nil
-	}
-
-	return opResp.CurrentUser.Inventory, nil
+	return &opResp.CurrentUser.Inventory, nil
 }
 
 // parseCampaignNode parses a single campaign node
