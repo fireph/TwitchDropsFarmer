@@ -1,9 +1,18 @@
 @import "tailwindcss";
 
-/* TailwindCSS v4 Configuration */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-twitch-purple: #9146FF;
   --color-twitch-purple-dark: #772CE8;
+}
+
+/* Button cursor: pointer default */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
 }
 
 /* Custom styles */
