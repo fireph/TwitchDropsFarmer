@@ -64,3 +64,5 @@ twitchdropsfarmer
 node_modules/
 
 /web/static/
+
+/graphql_example_json/

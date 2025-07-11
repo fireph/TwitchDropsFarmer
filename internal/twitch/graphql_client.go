@@ -246,7 +246,7 @@ func (c *Client) ClaimDrop(ctx context.Context, dropInstanceID string) error {
 }
 
 // GetInventory retrieves user's drop inventory
-func (c *Client) GetInventory(ctx context.Context) (*Inventory, error) {
+func (c *Client) GetInventory(ctx context.Context) (*InventoryGQL, error) {
 	gqlClient, err := c.getGQLClient()
 	if err != nil {
 		return nil, err

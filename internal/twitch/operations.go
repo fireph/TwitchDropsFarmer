@@ -208,7 +208,7 @@ var GQLOperations = map[OperationType]*GQLOperation{
 		},
 	),
 
-	// returns drops available for a particular channel
+	// returns drops available for a particular channel (unused)
 	OpAvailableDrops: NewGQLOperation(
 		"DropsHighlightService_AvailableDrops",
 		"9a62a09bce5b53e26e64a671e530bc599cb6aab1e5ba3cbd5d85966d3940716f",

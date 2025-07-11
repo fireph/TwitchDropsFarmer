@@ -180,7 +180,7 @@ func (g *GraphQLClient) GetCampaigns(ctx context.Context) ([]Campaign, error) {
 }
 
 // GetInventory fetches drop inventory using TDM's exact approach
-func (g *GraphQLClient) GetInventory(ctx context.Context) (*Inventory, error) {
+func (g *GraphQLClient) GetInventory(ctx context.Context) (*InventoryGQL, error) {
 	resp, err := g.executeOperation(ctx, OpInventory, nil)
 	if err != nil {
 		return nil, err
@@ -603,45 +603,24 @@ func (g *GraphQLClient) parseCampaignDetailsResponse(data interface{}) (*Campaig
 }
 
 // parseInventoryResponse parses the inventory GraphQL response
-func (g *GraphQLClient) parseInventoryResponse(data interface{}) (*Inventory, error) {
-	// Log the response structure for debugging
-	responseJSON, _ := json.MarshalIndent(data, "", "  ")
-	logrus.Debugf("Inventory response structure:\n%s", string(responseJSON))
-
-	dataMap, ok := data.(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("invalid response data format")
+func (g *GraphQLClient) parseInventoryResponse(data interface{}) (*InventoryGQL, error) {
+	dataBytes, err := json.Marshal(data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal inventory data: %w", err)
 	}
 
-	currentUser, ok := dataMap["currentUser"]
-	if !ok || currentUser == nil {
-		logrus.Warning("No currentUser in Inventory response")
-		return &Inventory{}, nil
+	var opResp OpInventoryResponse
+	err = json.Unmarshal(dataBytes, &opResp)
+	if err != nil {
+		return nil, fmt.Errorf("Error unmarshalling OpInventoryResponse: %w", err)
 	}
 
-	userMap, ok := currentUser.(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("invalid currentUser format")
+	if opResp.CurrentUser == nil || opResp.CurrentUser.Inventory == nil {
+		logrus.Warning("No currentUser or inventory in OpInventoryResponse")
+		return &InventoryGQL{}, nil
 	}
 
-	inventory := &Inventory{}
-
-	// Parse inventory data (this would need to be expanded based on actual response structure)
-	if inv, ok := userMap["inventory"].(map[string]interface{}); ok {
-		if gameEventDrops, ok := inv["gameEventDrops"].([]interface{}); ok {
-			for _, dropInterface := range gameEventDrops {
-				if dropMap, ok := dropInterface.(map[string]interface{}); ok {
-					drop := GameEventDrop{
-						ID: getString(dropMap, "id"),
-					}
-					// Parse other drop fields as needed
-					inventory.GameEventDrops = append(inventory.GameEventDrops, drop)
-				}
-			}
-		}
-	}
-
-	return inventory, nil
+	return opResp.CurrentUser.Inventory, nil
 }
 
 // parseCampaignNode parses a single campaign node
