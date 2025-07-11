@@ -6,7 +6,7 @@
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
     "strict": true,
-    "noEmit": true
+    "lib": ["ES2020", "DOM"]
   },
   "include": ["vite.config.ts"]
 }
