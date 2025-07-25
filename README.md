@@ -2,6 +2,9 @@
 
 A Go-based implementation of TwitchDropsMiner with a modern web interface and comprehensive API. This application automatically farms Twitch drops by watching streams using the exact same proven methods as the original TwitchDropsMiner.
 
+> [!WARNING]
+> This project is still very much a work in progress and not feature complete yet! Farming drops is working but claiming drops does not work correctly yet.
+
 ## Key Features
 
 - **🎯 Exact TDM Logic**: Uses identical GraphQL operations and authentication methods as TwitchDropsMiner
